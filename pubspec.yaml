@@ -1,0 +1,44 @@
+name: safepulse
+description: SafePulse - Real-time safety app
+publish_to: 'none'
+version: 2.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  font_awesome_flutter: ^10.7.0
+  firebase_core: ^3.11.0
+  firebase_auth: ^5.5.0
+  firebase_messaging: ^15.1.0
+  cloud_firestore: ^5.6.3
+  geolocator: ^13.0.2
+  permission_handler: ^11.3.1
+  provider: ^6.1.2
+  google_fonts: ^6.2.1
+  animate_do: ^3.3.4
+  lottie: ^3.1.2
+  http: ^1.6.0
+  shared_preferences: ^2.5.3
+  sensors_plus: ^7.0.0
+  mobile_scanner: ^6.0.0
+  qr_flutter: ^4.1.0
+  share_plus: ^10.1.4
+  flutter_contacts: ^1.1.9+2
+  url_launcher: ^6.3.1
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  intl: ^0.19.0
+  telephony: ^0.2.0
+  do_not_disturb: ^1.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,42 @@
+# Misc
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Flutter / Dart
+.dart_tool/
+.pub/
+.pub-cache/
+/build/
+**/ios/Flutter/.last_build_id
+
+# Android
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Backend (Node.js)
+backend/node_modules/
+backend/.env
+backend/package-lock.json
+backend/yarn.lock
+
+# Env files
+.env
+.env.*
+
+# Firebase
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Others
+.flutter-plugins
+.flutter-plugins-dependencies
