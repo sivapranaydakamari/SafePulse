@@ -30,7 +30,15 @@ const userSchema = new mongoose.Schema({
   otp: { type: String },
   otpExpiry: { type: Date },
   lastSpeedAlert: { type: Date },
-  lastRiskAlert: { type: Date }
+  lastRiskAlert: { type: Date },
+
+  // ===== ADDED: For Circle Map real-time location =====
+  lastLocation: {
+    lat: { type: Number, default: null },
+    lng: { type: Number, default: null },
+    updatedAt: { type: Date, default: null }
+  }
+  // ====================================================
 });
 
 userSchema.index({ locationPoint: '2dsphere' });

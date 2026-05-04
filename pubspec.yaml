@@ -34,6 +34,7 @@ dependencies:
   intl: ^0.19.0
   telephony: ^0.2.0
   do_not_disturb: ^1.0.3
+  cached_network_image: ^3.3.1
 
 dev_dependencies:
   flutter_test:

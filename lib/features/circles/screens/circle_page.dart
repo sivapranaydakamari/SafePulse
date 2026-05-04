@@ -9,6 +9,8 @@ import '../../home/screens/monitoring_page.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'circle_map_page.dart';
+
 
 class CirclePage extends StatefulWidget {
   const CirclePage({super.key});
@@ -294,6 +296,7 @@ class _CirclePageState extends State<CirclePage> {
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -343,46 +346,111 @@ class _CirclePageState extends State<CirclePage> {
   }
 
   Widget _buildCircleList() {
-    // For now, we'll show the first circle details
     final circle = _circles[0];
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [AppColors.secondary, AppColors.primary], begin: Alignment.topLeft, end: Alignment.bottomRight),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(circle['name'], style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text("${circle['members'].length} Members • Active", style: TextStyle(color: Colors.white.withOpacity(0.8))),
-                    ],
+          // ===== MODIFIED: Circle header card — tap karo to open Map =====
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CircleMapPage(
+                    circleId: circle['_id'],
+                    circleName: circle['name'],
                   ),
                 ),
-                GestureDetector(
-                  onTap: () => _showShareCodeDialog(circle['inviteCode']),
-                  child: const Icon(Icons.qr_code, color: Colors.white, size: 40),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.secondary, AppColors.primary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          circle['name'],
+                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "${circle['members'].length} Members • Active",
+                          style: TextStyle(color: Colors.white.withOpacity(0.8)),
+                        ),
+                        const SizedBox(height: 6),
+                        // Map hint text
+                        Row(
+                          children: [
+                            const Icon(Icons.map_outlined, color: Colors.white70, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              "Tap to view on map",
+                              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  // QR icon (share code) — still works independently
+                  GestureDetector(
+                    onTap: () => _showShareCodeDialog(circle['inviteCode']),
+                    child: const Icon(Icons.qr_code, color: Colors.white, size: 40),
+                  ),
+                ],
+              ),
             ),
           ),
+          // =============================================================
           const SizedBox(height: 30),
+          // ===== ADDED: "View on Map" button below circle card =====
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CircleMapPage(
+                      circleId: circle['_id'],
+                      circleName: circle['name'],
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.location_on, color: AppColors.primary),
+              label: const Text(
+                "View Members on Map",
+                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.primary),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+          ),
+          // =========================================================
+          const SizedBox(height: 20),
           const Text("Circle Members", style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
           // Real members from backend
           ...List.generate(circle['members'].length, (index) {
             final memberData = circle['members'][index];
             
-            // Defensive check: if backend didn't populate, memberData might be a String (ID)
             if (memberData is String) {
               return _buildMemberTile(
                 context,
@@ -391,6 +459,9 @@ class _CirclePageState extends State<CirclePage> {
                 statusColor: Colors.grey,
                 battery: "--",
                 image: "assets/images/john_doe_avatar.png",
+                // ===== ADDED: pass circle data for map navigation =====
+                circleId: circle['_id'],
+                circleName: circle['name'],
               );
             }
 
@@ -406,6 +477,9 @@ class _CirclePageState extends State<CirclePage> {
               battery: member['batteryLevel'] ?? "100%",
               image: "assets/images/john_doe_avatar.png",
               isDriving: isDriving,
+              // ===== ADDED: pass circle data for map navigation =====
+              circleId: circle['_id'],
+              circleName: circle['name'],
             );
           }),
           const SizedBox(height: 40),
@@ -435,6 +509,7 @@ class _CirclePageState extends State<CirclePage> {
     );
   }
 
+  // ===== MODIFIED: Added circleId & circleName params, onTap now opens CircleMapPage =====
   Widget _buildMemberTile(
     BuildContext context, {
     required String name,
@@ -443,10 +518,23 @@ class _CirclePageState extends State<CirclePage> {
     required String battery,
     required String image,
     bool isDriving = false,
+    String? circleId,
+    String? circleName,
   }) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const MonitoringPage()));
+        // ===== CHANGED: Opens CircleMapPage instead of MonitoringPage =====
+        if (circleId != null && circleName != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CircleMapPage(
+                circleId: circleId,
+                circleName: circleName,
+              ),
+            ),
+          );
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -521,6 +609,11 @@ class _CirclePageState extends State<CirclePage> {
                     padding: EdgeInsets.only(top: 4),
                     child: Icon(Icons.directions_car, size: 16, color: AppColors.primary),
                   ),
+                // ===== ADDED: Map icon hint =====
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Icon(Icons.chevron_right, size: 16, color: AppColors.textSecondary),
+                ),
               ],
             ),
           ],
@@ -528,6 +621,7 @@ class _CirclePageState extends State<CirclePage> {
       ),
     );
   }
+  // ===================================================================================
 
   Widget _buildActionCard({required IconData icon, required String label, required Color color}) {
     return Container(
