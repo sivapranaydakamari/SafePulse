@@ -5,9 +5,12 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:battery_plus/battery_plus.dart';
+
 import '../../../core/services/location_service.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/theme/app_colors.dart';
+
 import '../screens/places_page.dart';
 import '../../profile/screens/settings_page.dart';
 import '../../circles/screens/circle_page.dart';
@@ -28,12 +31,18 @@ class _HomePageState extends State<HomePage> {
 
   Widget _getBody() {
     switch (_selectedIndex) {
-      case 0: return const HomeContentView();
-      case 1: return const PlacesPage();
-      case 2: return const SOSHubPage();
-      case 3: return const CirclePage();
-      case 4: return const SettingsPage();
-      default: return const HomeContentView();
+      case 0:
+        return const HomeContentView();
+      case 1:
+        return const PlacesPage();
+      case 2:
+        return const SOSHubPage();
+      case 3:
+        return const CirclePage();
+      case 4:
+        return const SettingsPage();
+      default:
+        return const HomeContentView();
     }
   }
 
@@ -49,15 +58,13 @@ class _HomePageState extends State<HomePage> {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
         elevation: 10,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined),      activeIcon: Icon(Icons.home),       label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.location_on_outlined),activeIcon: Icon(Icons.location_on),label: 'Places'),
-          BottomNavigationBarItem(icon: Icon(Icons.emergency_outlined),  activeIcon: Icon(Icons.emergency),  label: 'SOS'),
-          BottomNavigationBarItem(icon: Icon(Icons.group_outlined),      activeIcon: Icon(Icons.group),      label: 'Circles'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings_outlined),   activeIcon: Icon(Icons.settings),   label: 'Settings'),
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.location_on_outlined), activeIcon: Icon(Icons.location_on), label: 'Places'),
+          BottomNavigationBarItem(icon: Icon(Icons.emergency_outlined), activeIcon: Icon(Icons.emergency), label: 'SOS'),
+          BottomNavigationBarItem(icon: Icon(Icons.group_outlined), activeIcon: Icon(Icons.group), label: 'Circles'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), activeIcon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
     );
@@ -73,10 +80,14 @@ class HomeContentView extends StatefulWidget {
 
 class _HomeContentViewState extends State<HomeContentView> {
   final MapController _mapController = MapController();
-  LatLng _center = const LatLng(17.38, 78.49); // default Hyderabad
+  final Battery _battery = Battery(); // ✅ optimized (single instance)
+
+  LatLng _center = const LatLng(17.38, 78.49);
   StreamSubscription<Position>? _positionStream;
   Timer? _syncTimer;
   String? _userId;
+
+  bool _isOpeningSOS = false;
 
   @override
   void initState() {
@@ -116,29 +127,38 @@ class _HomeContentViewState extends State<HomeContentView> {
       }
     });
 
-    // Sync location to backend every 30s (keeps $near query current for SOS)
+    /// ✅ PRODUCTION SAFE TIMER
     _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
-      if (_center.latitude != 17.38) { // Only sync if we have a real location
-        await ApiService.updateStatus(lat: _center.latitude, lng: _center.longitude);
+      if (_center.latitude != 17.38) {
+        try {
+          final level = await _battery.batteryLevel;
+
+          await ApiService.updateStatus(
+            lat: _center.latitude,
+            lng: _center.longitude,
+            batteryLevel: "$level%",
+          );
+        } catch (e) {
+          debugPrint("Battery fetch failed: $e");
+        }
       }
     });
   }
 
-  bool _isOpeningSOS = false;
-
   Future<void> _triggerSOS() async {
     if (_userId == null || _isOpeningSOS) return;
-    
+
     setState(() => _isOpeningSOS = true);
 
     try {
       final pos = await LocationService.getCurrentLocation();
+
       final result = await ApiService.startSOS(
         lat: pos.latitude,
         lng: pos.longitude,
         address: 'Emergency',
       );
-      
+
       if (!mounted) return;
 
       if (result != null) {
@@ -163,7 +183,6 @@ class _HomeContentViewState extends State<HomeContentView> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Standardized Light OSM tiles
         FlutterMap(
           mapController: _mapController,
           options: MapOptions(initialCenter: _center, initialZoom: 15),
@@ -175,14 +194,15 @@ class _HomeContentViewState extends State<HomeContentView> {
             MarkerLayer(markers: [
               Marker(
                 point: _center,
-                width: 60, height: 60,
+                width: 60,
+                height: 60,
                 child: const Icon(Icons.my_location, color: AppColors.primary, size: 36),
               ),
             ]),
           ],
         ),
 
-        // SOS button (with debounce protection)
+        /// 🔴 SOS Button
         Positioned(
           right: 16,
           bottom: 110,
@@ -190,13 +210,17 @@ class _HomeContentViewState extends State<HomeContentView> {
             backgroundColor: _isOpeningSOS ? Colors.grey : Colors.red,
             heroTag: 'home_sos',
             onPressed: _isOpeningSOS ? null : _triggerSOS,
-            child: _isOpeningSOS 
-              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : const Text('SOS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13)),
+            child: _isOpeningSOS
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Text('SOS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13)),
           ),
         ),
 
-        // Bottom action panel
+        /// Bottom Panel
         Positioned(
           bottom: 16,
           left: 16,
@@ -233,14 +257,14 @@ class _HomeContentViewState extends State<HomeContentView> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => DrivingModePage(
-                        initialLocation: _center,
-                        selectedRoute: const {
-                          'polyline': [],
-                          'distance': 0,
-                          'color': 'green',
-                          'riskScore': 0,
-                        },
-                      ),
+                          initialLocation: _center,
+                          selectedRoute: const {
+                            'polyline': [],
+                            'distance': 0,
+                            'color': 'green',
+                            'riskScore': 0,
+                          },
+                        ),
                       ),
                     ),
                   ),
