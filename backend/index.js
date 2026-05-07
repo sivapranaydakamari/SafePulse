@@ -10,6 +10,12 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  if (Object.keys(req.query).length) console.log('  Query:', req.query);
+  if (req.method !== 'GET') console.log('  Body:', req.body);
+  next();
+});
 
 // MongoDB
 mongoose.connect(process.env.MONGODB_URI)
@@ -42,21 +48,14 @@ app.use('/api/overpass', require('./routes/overpass'));
 
 app.get('/', (req, res) => res.send('SafePulse API v2 running'));
 
-const server = app.listen(PORT, () => console.log(`SafePulse API on port ${PORT}`));
-
-server.on('error', (err) => {
+// Bind to 0.0.0.0 so physical devices on the LAN can connect
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ SafePulse API listening on 0.0.0.0:${PORT}`);
+}).on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(`❌ Port ${PORT} is already in use.`);
-    console.log(`⚡ Attempting to free port ${PORT}...`);
-    const { execSync } = require('child_process');
-    try {
-      // Windows
-      execSync(`for /f "tokens=5" %a in ('netstat -ano ^| findstr :${PORT}') do taskkill /PID %a /F`, { shell: 'cmd.exe', stdio: 'ignore' });
-    } catch (_) {}
-    setTimeout(() => {
-      server.close();
-      app.listen(PORT, () => console.log(`✅ SafePulse API restarted on port ${PORT}`));
-    }, 1500);
+    console.error(`❌ Port ${PORT} is already in use. Kill the other process first:`);
+    console.error(`   Windows: netstat -ano | findstr :${PORT}  then  taskkill /PID <pid> /F`);
+    process.exit(1);
   } else {
     console.error('Server error:', err);
     process.exit(1);

@@ -54,6 +54,7 @@ router.post('/send-otp', async (req, res) => {
 
 router.post('/send-email-otp', async (req, res) => {
   const { email, name, phone } = req.body;
+  console.log(`[AUTH] send-email-otp request: email=${email}, name=${name}, phone=${phone}`);
   if (!email) return res.status(400).json({ success: false, error: 'Email is required' });
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -63,24 +64,31 @@ router.post('/send-email-otp', async (req, res) => {
     let user = await User.findOne({ email });
     if (!user) {
       if (!phone || !name) {
+        console.log('[AUTH] Missing name/phone for new registration');
         return res.status(400).json({ success: false, error: 'Name and Phone are required for new registration' });
       }
       user = new User({ email, phone, name, otp, otpExpiry, loginType: 'email' });
+      console.log('[AUTH] Creating new user for email:', email);
     } else {
       user.otp = otp;
       user.otpExpiry = otpExpiry;
       user.loginType = 'email';
       if (name) user.name = name;
       if (phone) user.phone = phone;
+      console.log('[AUTH] Existing user found, updating OTP for:', email);
     }
     await user.save();
+    console.log('[AUTH] User saved. Sending email OTP...');
 
     const sent = await emailService.sendEmailOTP(email, otp);
+    console.log('[AUTH] Email send result:', sent);
     if (!sent) return res.status(500).json({ success: false, error: 'Failed to send verification email' });
 
+    console.log(`[AUTH] ✅ OTP sent to ${email}: ${otp}`);
     res.json({ success: true, message: 'Verification code sent to your email' });
   } catch (error) {
     console.error('[AUTH] send-email-otp error:', error.message);
+    console.error('[AUTH] Full error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
