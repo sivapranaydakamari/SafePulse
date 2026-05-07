@@ -87,7 +87,7 @@ class _CircleMapPageState extends State<CircleMapPage> {
       try { batteryLevel = await _battery.batteryLevel; } catch (_) {}
 
       await http.put(
-        Uri.parse('${ApiService.baseUrl}/circles/update-location'),
+        Uri.parse('${ApiService.baseUrl}/circle/update-location'),
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_authToken'},
         body: jsonEncode({
           'lat': pos.latitude,
@@ -105,7 +105,7 @@ class _CircleMapPageState extends State<CircleMapPage> {
     if (_authToken == null) return;
     try {
       final res = await http.get(
-        Uri.parse('${ApiService.baseUrl}/circles/${widget.circleId}/members-location'),
+        Uri.parse('${ApiService.baseUrl}/circle/${widget.circleId}/members-location'),
         headers: {'Authorization': 'Bearer $_authToken', 'Content-Type': 'application/json'},
       );
       debugPrint('[MAP] Members fetch: ${res.statusCode}');

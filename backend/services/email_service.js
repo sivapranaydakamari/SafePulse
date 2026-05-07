@@ -3,6 +3,9 @@ const nodemailer = require('nodemailer');
 const emailUser = process.env.EMAIL_USER;
 const emailPass = process.env.EMAIL_PASS;
 
+console.log('[EMAIL] Initialising with user:', emailUser ? 'Set' : 'NOT SET');
+console.log('[EMAIL] Initialising with pass:', emailPass ? 'Set' : 'NOT SET');
+
 const transporter = emailUser && emailPass
   ? nodemailer.createTransport({
       service: 'gmail',
@@ -12,6 +15,10 @@ const transporter = emailUser && emailPass
       },
     })
   : null;
+
+if (!transporter) {
+  console.warn('[EMAIL] Transporter is NULL. Falling back to DEV MODE logging.');
+}
 
 /**
  * Send OTP via Email

@@ -22,7 +22,8 @@ android {
 
     defaultConfig {
         applicationId = "com.example.safepulse"
-        minSdk = flutter.minSdkVersion
+        // minSdk = flutter.minSdkVersion
+        minSdk = 23
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName

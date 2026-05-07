@@ -47,15 +47,31 @@ class _CirclePageState extends State<CirclePage> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    
     final prefs = await SharedPreferences.getInstance();
     _userId = prefs.getString('userId');
+    
     if (_userId != null) {
-      final result = await ApiService.getUserCircles();
-      if (result['success']) {
-        setState(() { _circles = result['circles']; _isLoading = false; });
-      } else {
-        setState(() => _isLoading = false);
+      try {
+        final result = await ApiService.getUserCircles();
+        if (mounted) {
+          if (result['success'] == true) {
+            setState(() { 
+              _circles = result['circles'] ?? []; 
+              _isLoading = false; 
+            });
+          } else {
+            setState(() => _isLoading = false);
+          }
+        }
+      } catch (e) {
+        debugPrint('[CIRCLE] loadData error: $e');
+        if (mounted) setState(() => _isLoading = false);
       }
+    } else {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -357,137 +373,148 @@ class _CirclePageState extends State<CirclePage> {
   }
 
   Widget _buildCircleList() {
-    final circle = _circles[0];
-    final members = circle['members'] as List;
-    final inviteCode = circle['inviteCode'] ?? '';
-
-    return SingleChildScrollView(
+    return ListView.builder(
       padding: const EdgeInsets.all(20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      itemCount: _circles.length,
+      itemBuilder: (context, circleIndex) {
+        final circle = _circles[circleIndex];
+        final members = (circle['members'] as List? ?? []);
+        final inviteCode = circle['inviteCode'] ?? '';
 
-        // Circle header card
-        GestureDetector(
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-              builder: (_) => CircleMapPage(circleId: circle['_id'] ?? '', circleName: circle['name'] ?? ''))),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                  colors: [AppColors.secondary, AppColors.primary],
-                  begin: Alignment.topLeft, end: Alignment.bottomRight),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Row(children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(circle['name'],
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text("${members.length} Members • Active",
-                    style: TextStyle(color: Colors.white.withOpacity(0.8))),
-                const SizedBox(height: 6),
-                Row(children: [
-                  const Icon(Icons.map_outlined, color: Colors.white70, size: 14),
-                  const SizedBox(width: 4),
-                  Text("Tap to view on map",
-                      style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (circleIndex > 0) const SizedBox(height: 40),
+            
+            // Circle header card
+            GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => CircleMapPage(circleId: circle['_id'] ?? '', circleName: circle['name'] ?? ''))),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                      colors: circleIndex % 2 == 0 
+                          ? [AppColors.secondary, AppColors.primary]
+                          : [const Color(0xFF6A11CB), const Color(0xFF2575FC)],
+                      begin: Alignment.topLeft, end: Alignment.bottomRight),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Row(children: [
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(circle['name'] ?? 'Unnamed Circle',
+                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text("${members.length} Members • Active",
+                        style: TextStyle(color: Colors.white.withOpacity(0.8))),
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      const Icon(Icons.map_outlined, color: Colors.white70, size: 14),
+                      const SizedBox(width: 4),
+                      Text("Tap to view on map",
+                          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+                    ]),
+                  ])),
+                  GestureDetector(
+                    onTap: () => _showShareCodeDialog(inviteCode),
+                    child: const Icon(Icons.qr_code, color: Colors.white, size: 40),
+                  ),
                 ]),
-              ])),
-              GestureDetector(
-                onTap: () => _showShareCodeDialog(inviteCode),
-                child: const Icon(Icons.qr_code, color: Colors.white, size: 40),
               ),
-            ]),
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        // View on Map
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => CircleMapPage(circleId: circle['_id'] ?? '', circleName: circle['name'] ?? ''))),
-            icon: const Icon(Icons.location_on, color: AppColors.primary),
-            label: const Text("View Members on Map",
-                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.primary),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
-          ),
-        ),
 
-        const SizedBox(height: 12),
+            const SizedBox(height: 12),
 
-        // ── ADD MEMBERS button — opens contacts picker ──────────────────────
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => _showAddMembersSheet(inviteCode),
-            icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
-            label: const Text("Add Members",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              elevation: 0,
+            // View on Map
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => CircleMapPage(circleId: circle['_id'] ?? '', circleName: circle['name'] ?? ''))),
+                icon: const Icon(Icons.location_on, color: AppColors.primary),
+                label: const Text("View Members on Map",
+                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.primary),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
             ),
-          ),
-        ),
 
-        const SizedBox(height: 20),
-        _buildLiveStatsRow(members),
-        const SizedBox(height: 20),
+            const SizedBox(height: 12),
 
-        const Text("Circle Members",
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 16),
+            // ADD MEMBERS button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showAddMembersSheet(inviteCode),
+                icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
+                label: const Text("Add Members",
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+              ),
+            ),
 
-        ...List.generate(members.length, (index) {
-          final memberData = members[index];
-          if (memberData is String) {
-            return _buildMemberTile(context,
-                name: "Loading...", status: "Updating...",
-                statusColor: Colors.grey, battery: "--", isDriving: false,
-                circleId: circle['_id'], circleName: circle['name'], isSelf: false);
-          }
+            const SizedBox(height: 20),
+            _buildLiveStatsRow(members),
+            const SizedBox(height: 20),
 
-          final Map<String, dynamic> member = Map<String, dynamic>.from(memberData);
-          final isSelf = member['_id'] == _userId;
-          final bool isDriving = member['isDriving'] == true;
-          final int speed = (member['currentSpeed'] ?? 0).toInt();
+            const Text("Circle Members",
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
 
-          // Self → real device battery; others → server battery
-          final String battery = isSelf && _deviceBattery != null
-              ? '$_deviceBattery%'
-              : member['batteryLevel']?.toString() ?? '--';
-          final int batteryNum = int.tryParse(battery.replaceAll('%', '').trim()) ?? 0;
-          final Color batteryColor = batteryNum <= 20 ? Colors.red
-              : batteryNum <= 50 ? Colors.orange : AppColors.safe;
+            ...List.generate(members.length, (index) {
+              final memberData = members[index];
+              if (memberData is String) {
+                return _buildMemberTile(context,
+                    name: "Loading...", status: "Updating...",
+                    statusColor: Colors.grey, battery: "--", isDriving: false,
+                    circleId: circle['_id'], circleName: circle['name'], isSelf: false);
+              }
 
-          String statusText;
-          Color statusColor;
-          if (isDriving) { statusText = "Driving @ $speed km/h"; statusColor = AppColors.primary; }
-          else if (batteryNum <= 20) { statusText = "Low Battery"; statusColor = Colors.orange; }
-          else { statusText = isSelf ? "You • Active" : "Active"; statusColor = AppColors.safe; }
+              final Map<String, dynamic> member = Map<String, dynamic>.from(memberData);
+              final isSelf = member['_id'] == _userId;
+              final bool isDriving = member['isDriving'] == true;
+              final int speed = (member['currentSpeed'] ?? 0).toInt();
 
-          return _buildMemberTile(context,
-            name: isSelf ? "${member['name'] ?? 'You'} (You)" : (member['name'] ?? 'Member'),
-            status: statusText, statusColor: statusColor,
-            battery: battery, batteryColor: batteryColor,
-            isDriving: isDriving, currentSpeed: speed,
-            profilePic: member['profilePic'],
-            circleId: circle['_id'], circleName: circle['name'],
-            memberData: member, isSelf: isSelf,
-          );
-        }),
+              // Self → real device battery; others → server battery
+              final String battery = isSelf && _deviceBattery != null
+                  ? '$_deviceBattery%'
+                  : member['batteryLevel']?.toString() ?? '--';
+              final int batteryNum = int.tryParse(battery.replaceAll('%', '').trim()) ?? 0;
+              final Color batteryColor = batteryNum <= 20 ? Colors.red
+                  : batteryNum <= 50 ? Colors.orange : AppColors.safe;
 
-        const SizedBox(height: 40),
-        _buildActionButtons(),
-      ]),
+              String statusText;
+              Color statusColor;
+              if (isDriving) { statusText = "Driving @ $speed km/h"; statusColor = AppColors.primary; }
+              else if (batteryNum <= 20) { statusText = "Low Battery"; statusColor = Colors.orange; }
+              else { statusText = isSelf ? "You • Active" : "Active"; statusColor = AppColors.safe; }
+
+              return _buildMemberTile(context,
+                name: isSelf ? "${member['name'] ?? 'You'} (You)" : (member['name'] ?? 'Member'),
+                status: statusText, statusColor: statusColor,
+                battery: battery, batteryColor: batteryColor,
+                isDriving: isDriving, currentSpeed: speed,
+                profilePic: member['profilePic'],
+                circleId: circle['_id'], circleName: circle['name'],
+                memberData: member, isSelf: isSelf,
+              );
+            }),
+            
+            if (circleIndex == _circles.length - 1) ...[
+              const SizedBox(height: 40),
+              _buildActionButtons(),
+            ],
+          ],
+        );
+      },
     );
   }
 

@@ -41,17 +41,20 @@ router.post('/join', requireAuth, async (req, res) => {
     const circle = await Circle.findOne({ inviteCode });
     if (!circle) return res.status(404).json({ success: false, message: 'Invalid invite code' });
     
-    if (circle.members.includes(userId)) {
-      return res.status(400).json({ success: false, message: 'Already a member' });
+    // Check if user is already a member using a more robust comparison
+    const isMember = circle.members.some(m => m.toString() === userId);
+    
+    if (!isMember) {
+      circle.members.push(userId);
+      await circle.save();
     }
     
-    circle.members.push(userId);
-    await circle.save();
-    
-    await User.findByIdAndUpdate(userId, { $push: { circles: circle._id } });
+    // Always ensure the circle is in the user's list (idempotent sync)
+    await User.findByIdAndUpdate(userId, { $addToSet: { circles: circle._id } });
     
     res.json({ success: true, circle });
   } catch (error) {
+    console.error(`[CIRCLE] Join Error: ${error.message}`);
     res.status(500).json({ success: false, error: error.message });
   }
 });
