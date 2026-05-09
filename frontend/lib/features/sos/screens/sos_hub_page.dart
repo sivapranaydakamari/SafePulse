@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:async';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/api_service.dart';
-import '../widgets/emergency_countdown.dart';
 import './service_routing_page.dart';
 import './sos_active_page.dart';
 import '../models/nearby_service.dart';
@@ -24,7 +21,8 @@ class SOSHubPage extends StatefulWidget {
   State<SOSHubPage> createState() => _SOSHubPageState();
 }
 
-class _SOSHubPageState extends State<SOSHubPage> with SingleTickerProviderStateMixin {
+class _SOSHubPageState extends State<SOSHubPage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   double _pressProgress = 0.0;
   bool _isPressed = false;
@@ -80,17 +78,16 @@ class _SOSHubPageState extends State<SOSHubPage> with SingleTickerProviderStateM
   void _navigateToNearbyMap(String type) async {
     if (_isNavigating) return;
     if (_nearbyData == null || _nearbyData!['services'] == null) return;
-    
+
     setState(() => _isNavigating = true);
 
     try {
-      final serviceList = type == 'hospital' 
-          ? _nearbyData!['services']['hospitals'] 
+      final serviceList = type == 'hospital'
+          ? _nearbyData!['services']['hospitals']
           : _nearbyData!['services']['police'];
 
-      final List<NearbyService> services = (serviceList as List)
-          .map((s) => NearbyService.fromJson(s))
-          .toList();
+      final List<NearbyService> services =
+          (serviceList as List).map((s) => NearbyService.fromJson(s)).toList();
 
       final pos = await LocationService.getCurrentLocation();
       if (!mounted) return;
@@ -99,7 +96,9 @@ class _SOSHubPageState extends State<SOSHubPage> with SingleTickerProviderStateM
         context,
         MaterialPageRoute(
           builder: (context) => NearbyServiceMapScreen(
-            title: type == 'hospital' ? "Nearby Hospitals" : "Nearby Police Stations",
+            title: type == 'hospital'
+                ? "Nearby Hospitals"
+                : "Nearby Police Stations",
             userLocation: LatLng(pos.latitude, pos.longitude),
             services: services,
           ),
@@ -135,7 +134,7 @@ class _SOSHubPageState extends State<SOSHubPage> with SingleTickerProviderStateM
         final parts = c.split('|');
         return {'name': parts[0], 'phone': parts[1]};
       }).toList();
-      
+
       if (_emergencyContacts.isEmpty) {
         // Start empty as per user request
         _emergencyContacts = [];
@@ -145,22 +144,24 @@ class _SOSHubPageState extends State<SOSHubPage> with SingleTickerProviderStateM
 
   Future<void> _saveContacts() async {
     final prefs = await SharedPreferences.getInstance();
-    final contactsJson = _emergencyContacts.map((c) => "${c['name']}|${c['phone']}").toList();
+    final contactsJson =
+        _emergencyContacts.map((c) => "${c['name']}|${c['phone']}").toList();
     await prefs.setStringList('emergency_contacts', contactsJson);
   }
 
   Future<void> _pickContact() async {
     try {
-      debugPrint("CONTACT_DEBUG: Requesting permission with permission_handler...");
+      debugPrint(
+          "CONTACT_DEBUG: Requesting permission with permission_handler...");
       var status = await Permission.contacts.request();
-      
+
       if (status.isGranted) {
         debugPrint("CONTACT_DEBUG: Permission granted. Opening picker...");
         // Re-check with flutter_contacts as well
         if (await FlutterContacts.requestPermission()) {
           final contact = await FlutterContacts.openExternalPick();
           debugPrint("CONTACT_DEBUG: Picker result: $contact");
-          
+
           if (contact != null) {
             final fullContact = await FlutterContacts.getContact(contact.id);
             if (fullContact != null && fullContact.phones.isNotEmpty) {
@@ -177,7 +178,8 @@ class _SOSHubPageState extends State<SOSHubPage> with SingleTickerProviderStateM
             } else {
               debugPrint("CONTACT_DEBUG: Contact has no phone numbers");
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Selected contact has no phone numbers")),
+                const SnackBar(
+                    content: Text("Selected contact has no phone numbers")),
               );
             }
           }
@@ -186,15 +188,18 @@ class _SOSHubPageState extends State<SOSHubPage> with SingleTickerProviderStateM
         debugPrint("CONTACT_DEBUG: Permanently denied");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Permission permanently denied. Please enable in Settings."),
-            action: SnackBarAction(label: "Settings", onPressed: openAppSettings),
+            content: Text(
+                "Permission permanently denied. Please enable in Settings."),
+            action:
+                SnackBarAction(label: "Settings", onPressed: openAppSettings),
           ),
         );
       } else {
         debugPrint("CONTACT_DEBUG: Permission denied (status: $status)");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text("Contact permission is required to add emergency contacts."),
+            content: const Text(
+                "Contact permission is required to add emergency contacts."),
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
               label: "Enable",
@@ -254,7 +259,7 @@ class _SOSHubPageState extends State<SOSHubPage> with SingleTickerProviderStateM
       }
 
       final pos = await LocationService.getCurrentLocation();
-      
+
       // Call Backend
       final result = await ApiService.startSOS(
         lat: pos.latitude,
@@ -287,7 +292,7 @@ class _SOSHubPageState extends State<SOSHubPage> with SingleTickerProviderStateM
     );
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
-      
+
       // Auto-send SMS alert as a fallback/secondary notification
       _sendSMSAlert(name, phone);
     } else {
@@ -325,9 +330,10 @@ class _SOSHubPageState extends State<SOSHubPage> with SingleTickerProviderStateM
               Navigator.of(context).pop();
             } else {
               // This handles cases where SOS is viewed from BottomNavBar
-              // It should basically "switch" back to home tab, but for now 
+              // It should basically "switch" back to home tab, but for now
               // we ensure it doesn't show a black screen.
-              Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+              Navigator.of(context)
+                  .pushNamedAndRemoveUntil('/', (route) => false);
             }
           },
         ),
@@ -345,287 +351,324 @@ class _SOSHubPageState extends State<SOSHubPage> with SingleTickerProviderStateM
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
-          children: [
-            const SizedBox(height: 40),
-            const Text(
-              "Hold for 3 Seconds to\nSOS",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.background,
-              ),
-            ),
-            const SizedBox(height: 40),
-
-            // Pulsing SOS Button
-            Center(
-              child: GestureDetector(
-                onLongPressStart: (_) => _handlePressStart(),
-                onLongPressEnd: (_) => _handlePressEnd(),
-                onLongPressCancel: () => _handlePressEnd(),
-                child: SizedBox(
-                  width: 300,
-                  height: 300,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Outer Pulse
-                      AnimatedBuilder(
-                        animation: _pulseController,
-                        builder: (context, child) {
-                          return Container(
-                            width: 250 * (1 + _pulseController.value * 0.1),
-                            height: 250 * (1 + _pulseController.value * 0.1),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.primary.withOpacity(0.1),
-                            ),
-                          );
-                        },
-                      ),
-                      // Middle Ring
-                      Container(
-                        width: 200,
-                        height: 200,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.primary.withOpacity(0.2),
-                        ),
-                      ),
-                      // Progress Ring
-                      SizedBox(
-                        width: 180,
-                        height: 180,
-                        child: CircularProgressIndicator(
-                          value: _pressProgress,
-                          strokeWidth: 8,
-                          color: Colors.red,
-                          backgroundColor: Colors.transparent,
-                        ),
-                      ),
-                      // Main Button
-                      Container(
-                        width: 150,
-                        height: 150,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: _isPressed 
-                              ? [Colors.red, Colors.redAccent] 
-                              : [AppColors.primary, AppColors.secondary],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _isPressed ? Colors.red.withOpacity(0.5) : AppColors.primary.withOpacity(0.5),
-                              blurRadius: 20,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.warning_rounded, color: Colors.white, size: 50),
-                            SizedBox(height: 8),
-                            Text(
-                              "SOS",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+            children: [
+              const SizedBox(height: 40),
+              const Text(
+                "Hold for 3 Seconds to\nSOS",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.background,
                 ),
               ),
-            ),
-            const SizedBox(height: 30),
-            Text(
-              "Emergency services and contacts will be notified",
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-            ),
+              const SizedBox(height: 40),
 
-            const SizedBox(height: 40),
-
-            // Emergency Contacts Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Emergency Contacts",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      TextButton(
-                        onPressed: _pickContact,
-                        child: const Text("Add", style: TextStyle(color: Colors.blue)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  ..._emergencyContacts.map((contact) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _buildContactCard(contact['name']!, contact['phone']!),
-                  )),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 40),
-
-            // Nearby Services Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Nearby Services",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      if (_isLoadingServices)
-                        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      // Hospital Card
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => _navigateToNearbyMap('hospital'),
-                          child: _buildServiceCard(
-                            "Hospitals",
-                            _nearbyData != null ? "${_nearbyData!['counts']['hospitals']} nearby" : "Loading...",
-                            Icons.local_hospital,
-                            Colors.blue.withOpacity(0.05),
-                            Colors.blue,
-                          ),
+              // Pulsing SOS Button
+              Center(
+                child: GestureDetector(
+                  onLongPressStart: (_) => _handlePressStart(),
+                  onLongPressEnd: (_) => _handlePressEnd(),
+                  onLongPressCancel: () => _handlePressEnd(),
+                  child: SizedBox(
+                    width: 300,
+                    height: 300,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Outer Pulse
+                        AnimatedBuilder(
+                          animation: _pulseController,
+                          builder: (context, child) {
+                            return Container(
+                              width: 250 * (1 + _pulseController.value * 0.1),
+                              height: 250 * (1 + _pulseController.value * 0.1),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.primary.withOpacity(0.1),
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      // Police Card
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => _navigateToNearbyMap('police'),
-                          child: _buildServiceCard(
-                            "Police",
-                            _nearbyData != null ? "${_nearbyData!['counts']['police']} nearby" : "Loading...",
-                            Icons.local_police,
-                            Colors.indigo.withOpacity(0.05),
-                            Colors.indigo,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 40),
-
-            // Location Preview
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: Container(
-                  height: 200,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    border: Border.all(color: AppColors.surface),
-                  ),
-                  child: Stack(
-                    children: [
-                      FlutterMap(
-                        mapController: _mapController,
-                        options: MapOptions(
-                          initialCenter: LatLng(17.3850, 78.4867), // Default, will be updated
-                          initialZoom: 13,
-                          interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
-                        ),
-                        children: [
-                          TileLayer(
-                            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                            userAgentPackageName: 'com.safepulse.app',
-                          ),
-                          if (_nearbyData != null)
-                            MarkerLayer(
-                              markers: [
-                                // Hospitals
-                                ...(_nearbyData!['services']['hospitals'] as List).map((s) => Marker(
-                                  point: LatLng((s['lat'] as num).toDouble(), (s['lon'] as num).toDouble()),
-                                  width: 30,
-                                  height: 30,
-                                  child: const Icon(Icons.local_hospital, color: Colors.red, size: 20),
-                                )),
-                                // Police
-                                ...(_nearbyData!['services']['police'] as List).map((s) => Marker(
-                                  point: LatLng((s['lat'] as num).toDouble(), (s['lon'] as num).toDouble()),
-                                  width: 30,
-                                  height: 30,
-                                  child: const Icon(Icons.local_police, color: Colors.blue, size: 20),
-                                )),
-                              ],
-                            ),
-                        ],
-                      ),
-                      // Overlay Location Text
-                      Positioned(
-                        bottom: 12,
-                        left: 12,
-                        right: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        // Middle Ring
+                        Container(
+                          width: 200,
+                          height: 200,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                            shape: BoxShape.circle,
+                            color: AppColors.primary.withOpacity(0.2),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                        ),
+                        // Progress Ring
+                        SizedBox(
+                          width: 180,
+                          height: 180,
+                          child: CircularProgressIndicator(
+                            value: _pressProgress,
+                            strokeWidth: 8,
+                            color: Colors.red,
+                            backgroundColor: Colors.transparent,
+                          ),
+                        ),
+                        // Main Button
+                        Container(
+                          width: 150,
+                          height: 150,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: _isPressed
+                                  ? [Colors.red, Colors.redAccent]
+                                  : [AppColors.primary, AppColors.secondary],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _isPressed
+                                    ? Colors.red.withOpacity(0.5)
+                                    : AppColors.primary.withOpacity(0.5),
+                                blurRadius: 20,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.location_on, color: AppColors.primary, size: 16),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _currentLocation,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                              Icon(Icons.warning_rounded,
+                                  color: Colors.white, size: 50),
+                              SizedBox(height: 8),
+                              Text(
+                                "SOS",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                  letterSpacing: 2,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 40),
-          ],
+              const SizedBox(height: 30),
+              Text(
+                "Emergency services and contacts will be notified",
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              ),
+
+              const SizedBox(height: 40),
+
+              // Emergency Contacts Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Emergency Contacts",
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        TextButton(
+                          onPressed: _pickContact,
+                          child: const Text("Add",
+                              style: TextStyle(color: Colors.blue)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ..._emergencyContacts.map((contact) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildContactCard(
+                              contact['name']!, contact['phone']!),
+                        )),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 40),
+
+              // Nearby Services Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Nearby Services",
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        if (_isLoadingServices)
+                          const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        // Hospital Card
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _navigateToNearbyMap('hospital'),
+                            child: _buildServiceCard(
+                              "Hospitals",
+                              _nearbyData != null
+                                  ? "${_nearbyData!['counts']['hospitals']} nearby"
+                                  : "Loading...",
+                              Icons.local_hospital,
+                              Colors.blue.withOpacity(0.05),
+                              Colors.blue,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Police Card
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _navigateToNearbyMap('police'),
+                            child: _buildServiceCard(
+                              "Police",
+                              _nearbyData != null
+                                  ? "${_nearbyData!['counts']['police']} nearby"
+                                  : "Loading...",
+                              Icons.local_police,
+                              Colors.indigo.withOpacity(0.05),
+                              Colors.indigo,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 40),
+
+              // Location Preview
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Container(
+                    height: 200,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      border: Border.all(color: AppColors.surface),
+                    ),
+                    child: Stack(
+                      children: [
+                        FlutterMap(
+                          mapController: _mapController,
+                          options: MapOptions(
+                            initialCenter: LatLng(
+                                17.3850, 78.4867), // Default, will be updated
+                            initialZoom: 13,
+                            interactionOptions: const InteractionOptions(
+                                flags: InteractiveFlag.none),
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate:
+                                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.safepulse.app',
+                            ),
+                            if (_nearbyData != null)
+                              MarkerLayer(
+                                markers: [
+                                  // Hospitals
+                                  ...(_nearbyData!['services']['hospitals']
+                                          as List)
+                                      .map((s) => Marker(
+                                            point: LatLng(
+                                                (s['lat'] as num).toDouble(),
+                                                (s['lon'] as num).toDouble()),
+                                            width: 30,
+                                            height: 30,
+                                            child: const Icon(
+                                                Icons.local_hospital,
+                                                color: Colors.red,
+                                                size: 20),
+                                          )),
+                                  // Police
+                                  ...(_nearbyData!['services']['police']
+                                          as List)
+                                      .map((s) => Marker(
+                                            point: LatLng(
+                                                (s['lat'] as num).toDouble(),
+                                                (s['lon'] as num).toDouble()),
+                                            width: 30,
+                                            height: 30,
+                                            child: const Icon(
+                                                Icons.local_police,
+                                                color: Colors.blue,
+                                                size: 20),
+                                          )),
+                                ],
+                              ),
+                          ],
+                        ),
+                        // Overlay Location Text
+                        Positioned(
+                          bottom: 12,
+                          left: 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(color: Colors.black12, blurRadius: 4)
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.location_on,
+                                    color: AppColors.primary, size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _currentLocation,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 
@@ -654,8 +697,12 @@ class _SOSHubPageState extends State<SOSHubPage> with SingleTickerProviderStateM
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text(phone, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                Text(name,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(phone,
+                    style:
+                        TextStyle(color: Colors.grey.shade600, fontSize: 13)),
               ],
             ),
           ),
@@ -675,7 +722,8 @@ class _SOSHubPageState extends State<SOSHubPage> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildServiceCard(String label, String dist, IconData icon, Color bg, Color color) {
+  Widget _buildServiceCard(
+      String label, String dist, IconData icon, Color bg, Color color) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(

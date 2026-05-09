@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/api_service.dart';
-import '../../home/screens/home_page.dart';
 import '../../../core/theme/app_colors.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'otp_screen.dart';
 import 'email_login_screen.dart';
 
@@ -25,9 +22,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleLogin() async {
     final phone = _phoneController.text.trim();
-    
+
     if (phone.isEmpty) {
-      setState(() => _errorMessage = "Please enter your 10-digit mobile number");
+      setState(
+          () => _errorMessage = "Please enter your 10-digit mobile number");
       return;
     }
 
@@ -82,10 +80,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Text(
                       "Welcome Back",
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -106,7 +105,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: AppColors.surface),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     children: [
                       Text(
@@ -137,7 +137,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           decoration: const InputDecoration(
                             border: InputBorder.none,
                             hintText: "Phone Number",
-                            hintStyle: TextStyle(color: AppColors.textSecondary),
+                            hintStyle:
+                                TextStyle(color: AppColors.textSecondary),
                           ),
                         ),
                       ),
@@ -194,7 +195,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const EmailLoginScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const EmailLoginScreen()),
                     );
                   },
                   style: OutlinedButton.styleFrom(
@@ -207,7 +209,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.email_outlined, color: AppColors.textPrimary),
+                      const Icon(Icons.email_outlined,
+                          color: AppColors.textPrimary),
                       const SizedBox(width: 12),
                       Text(
                         "Continue with Email",

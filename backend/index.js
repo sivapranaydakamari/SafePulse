@@ -11,8 +11,9 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  if (Object.keys(req.query).length) console.log('  Query:', req.query);
+  console.log(
+    `[${new Date().toISOString()}] ${req.method} ${req.url}`
+  );
   if (req.method !== 'GET') console.log('  Body:', req.body);
   next();
 });

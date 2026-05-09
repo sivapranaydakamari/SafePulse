@@ -1,5 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:safepulse/features/safepulse/engine/safepulse_engine.dart';
+import 'package:safepulse/features/safepulse/services/background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -23,7 +28,16 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _speedAlertsEnabled = false;
   bool _notificationsEnabled = true;
   List<Map<String, String>> _emergencyContacts = [];
+  double currentSpeedRawMs = 0.0;
+  int distractionSeconds = 0;
+  EngineState engineState = EngineState.idle;
+  bool useMs = true;
 
+  late StreamSubscription _logSub;
+  late StreamSubscription _speedSub;
+  late StreamSubscription _distractionSub;
+  late StreamSubscription _stateSub;
+  late StreamSubscription _callReturnedSub;
   @override
   void initState() {
     super.initState();
@@ -34,23 +48,26 @@ class _SettingsPageState extends State<SettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     final contactsJson = prefs.getStringList('emergency_contacts') ?? [];
     setState(() {
-      _userName  = prefs.getString('userName')  ?? 'SafePulse User';
+      _userName = prefs.getString('userName') ?? 'SafePulse User';
       _userPhone = prefs.getString('userPhone') ?? 'Not set';
       _userEmail = prefs.getString('userEmail') ?? 'Not set';
       _loginType = prefs.getString('loginType') ?? 'phone';
       _crashDetectionEnabled = prefs.getBool('crash_detection') ?? true;
-      _speedAlertsEnabled    = prefs.getBool('speed_alerts')    ?? false;
-      _notificationsEnabled  = prefs.getBool('notifications')   ?? true;
+      _speedAlertsEnabled = prefs.getBool('speed_alerts') ?? false;
+      _notificationsEnabled = prefs.getBool('notifications') ?? true;
       _emergencyContacts = contactsJson.map((c) {
         final parts = c.split('|');
         return {'name': parts[0], 'phone': parts.length > 1 ? parts[1] : ''};
       }).toList();
+      final isMonitoring = prefs.getBool('isMonitoring') ?? false;
+      engineState = isMonitoring ? EngineState.monitoring : EngineState.idle;
     });
   }
 
   Future<void> _saveContacts() async {
     final prefs = await SharedPreferences.getInstance();
-    final json = _emergencyContacts.map((c) => '${c['name']}|${c['phone']}').toList();
+    final json =
+        _emergencyContacts.map((c) => '${c['name']}|${c['phone']}').toList();
     await prefs.setStringList('emergency_contacts', json);
     // Sync to backend so SOS SMS has up-to-date contacts
     await ApiService.syncEmergencyContacts(_emergencyContacts);
@@ -58,7 +75,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _saveSetting(String key, dynamic value) async {
     final prefs = await SharedPreferences.getInstance();
-    if (value is bool)   await prefs.setBool(key, value);
+    if (value is bool) await prefs.setBool(key, value);
     if (value is String) await prefs.setString(key, value);
   }
 
@@ -74,23 +91,28 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _editProfile() {
-    final nameCtrl  = TextEditingController(text: _userName);
+    final nameCtrl = TextEditingController(text: _userName);
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.cardBg,
-        title: const Text('Edit Profile', style: TextStyle(color: Colors.white)),
+        title:
+            const Text('Edit Profile', style: TextStyle(color: Colors.white)),
         content: TextField(
           controller: nameCtrl,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             labelText: 'Name',
             labelStyle: TextStyle(color: AppColors.textSecondary),
-            enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.surface)),
+            enabledBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: AppColors.surface)),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child:
+                  const Text('Cancel', style: TextStyle(color: Colors.grey))),
           ElevatedButton(
             onPressed: () async {
               final newName = nameCtrl.text.trim();
@@ -115,10 +137,12 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.background,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => StatefulBuilder(
         builder: (ctx, setModal) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
           child: Container(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -129,21 +153,27 @@ class _SettingsPageState extends State<SettingsPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Emergency Contacts',
-                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold)),
                     TextButton(
                       onPressed: _emergencyContacts.length >= 3
                           ? null
                           : () async {
-                              final status = await Permission.contacts.request();
+                              final status =
+                                  await Permission.contacts.request();
                               if (status.isGranted &&
                                   await FlutterContacts.requestPermission()) {
-                                final contact = await FlutterContacts.openExternalPick();
+                                final contact =
+                                    await FlutterContacts.openExternalPick();
                                 if (contact != null) {
-                                  final full = await FlutterContacts.getContact(contact.id);
+                                  final full = await FlutterContacts.getContact(
+                                      contact.id);
                                   if (full != null && full.phones.isNotEmpty) {
                                     setModal(() {
                                       _emergencyContacts.add({
-                                        'name':  full.displayName,
+                                        'name': full.displayName,
                                         'phone': full.phones.first.number,
                                       });
                                     });
@@ -173,10 +203,14 @@ class _SettingsPageState extends State<SettingsPage> {
                           backgroundColor: AppColors.surface,
                           child: Icon(Icons.person, color: Colors.white),
                         ),
-                        title:    Text(c['name']  ?? '', style: const TextStyle(color: Colors.white)),
-                        subtitle: Text(c['phone'] ?? '', style: const TextStyle(color: AppColors.textSecondary)),
+                        title: Text(c['name'] ?? '',
+                            style: const TextStyle(color: Colors.white)),
+                        subtitle: Text(c['phone'] ?? '',
+                            style: const TextStyle(
+                                color: AppColors.textSecondary)),
                         trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline, color: AppColors.risk),
+                          icon: const Icon(Icons.delete_outline,
+                              color: AppColors.risk),
                           onPressed: () async {
                             setModal(() => _emergencyContacts.remove(c));
                             setState(() {});
@@ -195,6 +229,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    bool isMonitoring = engineState == EngineState.monitoring;
+    bool isProcessing = engineState == EngineState.processingSos;
+
+    final double overspeedLimitMs = 2.0;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Settings'), elevation: 0),
@@ -218,7 +257,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       backgroundColor: AppColors.primary.withOpacity(0.2),
                       child: Text(
                         _userName.isNotEmpty ? _userName[0].toUpperCase() : 'S',
-                        style: const TextStyle(color: AppColors.primary, fontSize: 24, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -227,33 +269,49 @@ class _SettingsPageState extends State<SettingsPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(_userName,
-                              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold)),
                           const SizedBox(height: 4),
                           // Logic for email/phone login display
                           if (_loginType == 'email') ...[
-                            Text(_userEmail, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                            Text(_userEmail,
+                                style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 13)),
                             const SizedBox(height: 2),
-                            Text(_userPhone, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                            Text(_userPhone,
+                                style: const TextStyle(
+                                    color: Colors.grey, fontSize: 11)),
                           ] else ...[
-                            Text(_userPhone, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                            Text(_userPhone,
+                                style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 13)),
                           ],
                           const SizedBox(height: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               'Login: ${_loginType.toUpperCase()}',
-                              style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
+                      icon: const Icon(Icons.edit_outlined,
+                          color: AppColors.primary),
                       onPressed: _editProfile,
                     ),
                   ],
@@ -271,9 +329,30 @@ class _SettingsPageState extends State<SettingsPage> {
                 title: 'Crash Detection',
                 subtitle: 'Auto alert on high impact',
                 value: _crashDetectionEnabled,
-                onChanged: (v) {
+                onChanged: (v) async {
                   setState(() => _crashDetectionEnabled = v);
                   _saveSetting('crash_detection', v);
+
+                  final prefs = await SharedPreferences.getInstance();
+                  final service = FlutterBackgroundService();
+
+                  if (!v) {
+                    await prefs.setBool("isMonitoring", false);
+                    service.invoke('stopService');
+                    setState(() => engineState = EngineState.idle);
+                  } else {
+                    await prefs.setBool("isMonitoring", true);
+                    if (!await Permission.location.isGranted) {
+                      await Permission.location.request();
+                    }
+                    if (!await Permission.notification.isGranted) {
+                      await Permission.notification.request();
+                    }
+                    if (!(await service.isRunning())) {
+                      await service.startService();
+                    }
+                    setState(() => engineState = EngineState.monitoring);
+                  }
                 },
               ),
               _buildSwitch(
@@ -290,8 +369,11 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 24),
 
             _buildSection('Account', [
-              _buildTile(Icons.person_outline, 'Personal Information', 'Edit your profile', onTap: _editProfile),
-              _buildTile(Icons.privacy_tip_outlined, 'Privacy & Permissions', 'Location and data sharing'),
+              _buildTile(Icons.person_outline, 'Personal Information',
+                  'Edit your profile',
+                  onTap: _editProfile),
+              _buildTile(Icons.privacy_tip_outlined, 'Privacy & Permissions',
+                  'Location and data sharing'),
               _buildSwitch(
                 icon: Icons.notifications_none_rounded,
                 title: 'Notifications',
@@ -307,7 +389,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
             _buildSection('Support', [
               _buildTile(Icons.help_outline, 'Help Center', 'FAQs and guides'),
-              _buildTile(Icons.info_outline, 'About SafePulse', 'Version 2.0.0'),
+              _buildTile(
+                  Icons.info_outline, 'About SafePulse', 'Version 2.0.0'),
             ]),
             const SizedBox(height: 40),
 
@@ -316,9 +399,12 @@ class _SettingsPageState extends State<SettingsPage> {
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 52),
                 side: const BorderSide(color: AppColors.risk),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('Logout', style: TextStyle(color: AppColors.risk, fontWeight: FontWeight.bold)),
+              child: const Text('Logout',
+                  style: TextStyle(
+                      color: AppColors.risk, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 20),
           ],
@@ -334,7 +420,10 @@ class _SettingsPageState extends State<SettingsPage> {
         Padding(
           padding: const EdgeInsets.only(left: 8, bottom: 10),
           child: Text(title,
-              style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold, fontSize: 13)),
+              style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13)),
         ),
         Container(
           decoration: BoxDecoration(
@@ -348,12 +437,17 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildTile(IconData icon, String title, String subtitle, {VoidCallback? onTap}) {
+  Widget _buildTile(IconData icon, String title, String subtitle,
+      {VoidCallback? onTap}) {
     return ListTile(
       leading: Icon(icon, color: AppColors.primary),
-      title: Text(title, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20),
+      title: Text(title,
+          style: const TextStyle(
+              color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+      trailing: const Icon(Icons.chevron_right,
+          color: AppColors.textSecondary, size: 20),
       onTap: onTap,
     );
   }
@@ -367,8 +461,11 @@ class _SettingsPageState extends State<SettingsPage> {
   }) {
     return SwitchListTile(
       secondary: Icon(icon, color: AppColors.primary),
-      title: Text(title, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+      title: Text(title,
+          style: const TextStyle(
+              color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
       value: value,
       activeColor: AppColors.primary,
       onChanged: onChanged,

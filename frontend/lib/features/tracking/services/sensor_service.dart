@@ -5,10 +5,8 @@ import 'package:geolocator/geolocator.dart';
 class SensorService {
   StreamSubscription<Position>? _positionSubscription;
 
-  /**
-   * Starts monitoring user behavior (Speed, Acceleration).
-   * In a real app, this would stream data to the backend.
-   */
+  /// Starts monitoring user behavior (Speed, Acceleration).
+  /// In a real app, this would stream data to the backend.
   void startMonitoring({
     required Function(double speed) onSpeedChanged,
     required Function() onSuddenBraking,
@@ -18,7 +16,8 @@ class SensorService {
       distanceFilter: 5,
     );
 
-    _positionSubscription = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+    _positionSubscription =
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
       (Position position) {
         // Convert m/s to km/h
         double speedKmH = position.speed * 3.6;

@@ -37,7 +37,7 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
     // Initially only show 3-4 points as requested
     _cachedServices.addAll(widget.services.take(4));
     _statusText = 'Showing closest ${_cachedServices.length} services';
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fitMarkers();
     });
@@ -51,7 +51,7 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
 
   void _onPositionChanged(MapCamera camera, bool hasGesture) {
     if (!hasGesture) return;
-    
+
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 800), () {
       _fetchForVisibleBounds();
@@ -135,8 +135,12 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
             Row(
               children: [
                 Icon(
-                  service.type == 'hospital' ? Icons.local_hospital : Icons.local_police,
-                  color: service.type == 'hospital' ? Colors.redAccent : Colors.blueAccent,
+                  service.type == 'hospital'
+                      ? Icons.local_hospital
+                      : Icons.local_police,
+                  color: service.type == 'hospital'
+                      ? Colors.redAccent
+                      : Colors.blueAccent,
                   size: 32,
                 ),
                 const SizedBox(width: 16),
@@ -154,7 +158,8 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
                       ),
                       Text(
                         'Location: ${service.lat.toStringAsFixed(4)}, ${service.lon.toStringAsFixed(4)}',
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 12),
                       ),
                     ],
                   ),
@@ -169,13 +174,15 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 minimumSize: const Size(double.infinity, 56),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
               ),
             ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Center(child: Text('Close', style: TextStyle(color: Colors.grey))),
+              child: const Center(
+                  child: Text('Close', style: TextStyle(color: Colors.grey))),
             ),
           ],
         ),
@@ -188,7 +195,8 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      builder: (context) => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary)),
     );
 
     try {
@@ -201,7 +209,8 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
 
       if (mounted) Navigator.pop(context); // hide loading
 
-      if (routesData != null && routesData['routes'] != null && (routesData['routes'] as List).isNotEmpty) {
+      if (routesData['routes'] != null &&
+          (routesData['routes'] as List).isNotEmpty) {
         final routes = routesData['routes'] as List<dynamic>;
         if (mounted) {
           Navigator.push(
@@ -219,7 +228,9 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(routesData['error'] ?? 'Could not find a safe route to this location.')),
+            SnackBar(
+                content: Text(routesData['error'] ??
+                    'Could not find a safe route to this location.')),
           );
         }
       }
@@ -241,16 +252,21 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(widget.title, style: const TextStyle(fontSize: 18)),
-            Text(_statusText, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+            Text(_statusText,
+                style: const TextStyle(fontSize: 10, color: Colors.grey)),
           ],
         ),
         backgroundColor: AppColors.background,
         elevation: 0,
         actions: [
           if (_isLoading)
-            const Center(child: Padding(
+            const Center(
+                child: Padding(
               padding: EdgeInsets.only(right: 16),
-              child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+              child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2)),
             )),
         ],
       ),
@@ -275,36 +291,44 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
                     point: widget.userLocation,
                     width: 45,
                     height: 45,
-                    child: const Icon(Icons.my_location, color: Colors.blue, size: 30),
+                    child: const Icon(Icons.my_location,
+                        color: Colors.blue, size: 30),
                   ),
                   // Service Markers
                   ..._cachedServices.map((s) => Marker(
-                    point: LatLng(s.lat, s.lon),
-                    width: 40,
-                    height: 40,
-                    child: GestureDetector(
-                      onTap: () => _showServiceDetails(s),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(color: Colors.black26, blurRadius: 4, offset: const Offset(0, 2))
-                          ],
+                        point: LatLng(s.lat, s.lon),
+                        width: 40,
+                        height: 40,
+                        child: GestureDetector(
+                          onTap: () => _showServiceDetails(s),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2))
+                              ],
+                            ),
+                            child: Icon(
+                              s.type == 'hospital'
+                                  ? Icons.local_hospital
+                                  : Icons.local_police,
+                              color: s.type == 'hospital'
+                                  ? Colors.red
+                                  : Colors.blue,
+                              size: 24,
+                            ),
+                          ),
                         ),
-                        child: Icon(
-                          s.type == 'hospital' ? Icons.local_hospital : Icons.local_police,
-                          color: s.type == 'hospital' ? Colors.red : Colors.blue,
-                          size: 24,
-                        ),
-                      ),
-                    ),
-                  )),
+                      )),
                 ],
               ),
             ],
           ),
-          
+
           // Re-center button
           Positioned(
             bottom: 24,
