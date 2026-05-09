@@ -5,10 +5,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/api_service.dart';
-import '../../../core/services/location_service.dart';
 import '../../../core/services/dnd_service.dart';
 import '../../../core/services/safety_ai_service.dart';
 import '../../sos/screens/sos_active_page.dart';
@@ -20,7 +18,7 @@ class DrivingModePage extends StatefulWidget {
   final LatLng? initialLocation;
 
   const DrivingModePage({
-    super.key, 
+    super.key,
     required this.selectedRoute,
     this.initialLocation,
   });
@@ -77,9 +75,10 @@ class _DrivingModePageState extends State<DrivingModePage> {
         .toList();
     _distanceRemaining = (widget.selectedRoute['distance'] as num).toDouble();
     _routeColor = _colorFromString(widget.selectedRoute['color']);
-    
+
     // Use initial location if provided
-    if (widget.initialLocation != null && widget.initialLocation!.latitude != 0) {
+    if (widget.initialLocation != null &&
+        widget.initialLocation!.latitude != 0) {
       _currentPos = widget.initialLocation!;
       _isLocationLoaded = true;
     }
@@ -126,7 +125,8 @@ class _DrivingModePageState extends State<DrivingModePage> {
           _isRetrying = false;
           // Only show error if we still don't have ANY location
           if (!_isLocationLoaded) {
-            _locationError = "Unable to get GPS location. Please check your settings and try again.";
+            _locationError =
+                "Unable to get GPS location. Please check your settings and try again.";
           } else {
             // We have a position (from initial or lastKnown), so just start streaming
             _startTracking();
@@ -156,17 +156,22 @@ class _DrivingModePageState extends State<DrivingModePage> {
 
   void _startTracking() {
     _positionSub = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 2),
+      locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high, distanceFilter: 2),
     ).listen((pos) {
       if (mounted) _onPosition(pos);
     });
 
     _brakingSub = _motionService.monitorSuddenBraking().listen((braking) {
-      if (braking) _addAlert(Icons.warning, 'Sudden braking', 'Rapid deceleration detected', Colors.orange);
+      if (braking)
+        _addAlert(Icons.warning, 'Sudden braking',
+            'Rapid deceleration detected', Colors.orange);
     });
 
     _crashSub = _motionService.monitorCrash().listen((crash) {
-      if (crash) _addAlert(Icons.car_crash, 'CRASH DETECTED', 'High-impact event. Triggering SOS.', Colors.red);
+      if (crash)
+        _addAlert(Icons.car_crash, 'CRASH DETECTED',
+            'High-impact event. Triggering SOS.', Colors.red);
     });
   }
 
@@ -193,7 +198,8 @@ class _DrivingModePageState extends State<DrivingModePage> {
     double speedKmh = pos.speed * 3.6;
     if (pos.speed <= 0 && _lastPos != null && _lastPosTime != null) {
       // Fallback: Distance / Time
-      final dist = Geolocator.distanceBetween(_lastPos!.latitude, _lastPos!.longitude, newPos.latitude, newPos.longitude);
+      final dist = Geolocator.distanceBetween(_lastPos!.latitude,
+          _lastPos!.longitude, newPos.latitude, newPos.longitude);
       final timeSec = now.difference(_lastPosTime!).inMilliseconds / 1000.0;
       if (timeSec > 0.5) {
         speedKmh = (dist / timeSec) * 3.6;
@@ -203,7 +209,8 @@ class _DrivingModePageState extends State<DrivingModePage> {
     // Smoothing (Moving Average of last 3 points)
     _speedBuffer.add(speedKmh);
     if (_speedBuffer.length > 3) _speedBuffer.removeAt(0);
-    final smoothedSpeed = _speedBuffer.reduce((a, b) => a + b) / _speedBuffer.length;
+    final smoothedSpeed =
+        _speedBuffer.reduce((a, b) => a + b) / _speedBuffer.length;
 
     // 2. Overspeed Monitoring (Limit: 80 km/h)
     if (smoothedSpeed > 80) {
@@ -255,7 +262,8 @@ class _DrivingModePageState extends State<DrivingModePage> {
     int closest = _closestPointIndex;
     final start = (_closestPointIndex - 5).clamp(0, _polylinePoints.length - 1);
     for (int i = start; i < _polylinePoints.length; i++) {
-      final d = Geolocator.distanceBetween(newPos.latitude, newPos.longitude, _polylinePoints[i].latitude, _polylinePoints[i].longitude);
+      final d = Geolocator.distanceBetween(newPos.latitude, newPos.longitude,
+          _polylinePoints[i].latitude, _polylinePoints[i].longitude);
       if (d < minDist) {
         minDist = d;
         closest = i;
@@ -265,19 +273,25 @@ class _DrivingModePageState extends State<DrivingModePage> {
 
     double remaining = 0;
     for (int i = closest; i < _polylinePoints.length - 1; i++) {
-      remaining += Geolocator.distanceBetween(_polylinePoints[i].latitude, _polylinePoints[i].longitude, _polylinePoints[i+1].latitude, _polylinePoints[i+1].longitude);
+      remaining += Geolocator.distanceBetween(
+          _polylinePoints[i].latitude,
+          _polylinePoints[i].longitude,
+          _polylinePoints[i + 1].latitude,
+          _polylinePoints[i + 1].longitude);
     }
 
     String eta = '--:--';
     if (speed > 5) {
       final hoursLeft = (remaining / 1000) / speed;
-      final etaTime = DateTime.now().add(Duration(seconds: (hoursLeft * 3600).round()));
+      final etaTime =
+          DateTime.now().add(Duration(seconds: (hoursLeft * 3600).round()));
       eta = DateFormat('hh:mm a').format(etaTime);
     }
 
     final offRoute = minDist > 65;
     if (offRoute && !_isOffRoute) {
-      _addAlert(Icons.alt_route, 'Off route', 'Rerouting to safe path...', Colors.redAccent);
+      _addAlert(Icons.alt_route, 'Off route', 'Rerouting to safe path...',
+          Colors.redAccent);
       _reroute(newPos);
     }
 
@@ -291,8 +305,9 @@ class _DrivingModePageState extends State<DrivingModePage> {
   void _triggerOverspeedResponse(double speed, LatLng pos) {
     _dndActive = true;
     DndService.setDndOn();
-    _addAlert(Icons.do_not_disturb_on, 'DND Active', 'High speed detected. Focus on road.', Colors.red);
-    
+    _addAlert(Icons.do_not_disturb_on, 'DND Active',
+        'High speed detected. Focus on road.', Colors.red);
+
     // Alert Circle Members (with backend cooldown)
     ApiService.sendSpeedAlert(
       speed: speed,
@@ -305,7 +320,8 @@ class _DrivingModePageState extends State<DrivingModePage> {
   void _stopOverspeedResponse() {
     _dndActive = false;
     DndService.setDndOff();
-    _addAlert(Icons.check_circle, 'Safe speed', 'DND Mode disabled', Colors.green);
+    _addAlert(
+        Icons.check_circle, 'Safe speed', 'DND Mode disabled', Colors.green);
   }
 
   Future<void> _reroute(LatLng from) async {
@@ -313,13 +329,18 @@ class _DrivingModePageState extends State<DrivingModePage> {
     setState(() => _isRerouting = true);
     final dest = _polylinePoints.last;
     final data = await ApiService.suggestRoutes(
-      startLat: from.latitude, startLng: from.longitude,
-      destLat: dest.latitude, destLng: dest.longitude,
+      startLat: from.latitude,
+      startLng: from.longitude,
+      destLat: dest.latitude,
+      destLng: dest.longitude,
     );
     if (!mounted) return;
     if (data['routes'] != null && (data['routes'] as List).isNotEmpty) {
       final bestRoute = (data['routes'] as List).first;
-      final newPoints = (bestRoute['polyline'] as List).map((p) => LatLng((p[0] as num).toDouble(), (p[1] as num).toDouble())).toList();
+      final newPoints = (bestRoute['polyline'] as List)
+          .map(
+              (p) => LatLng((p[0] as num).toDouble(), (p[1] as num).toDouble()))
+          .toList();
       setState(() {
         _polylinePoints = newPoints;
         _closestPointIndex = 0;
@@ -332,19 +353,32 @@ class _DrivingModePageState extends State<DrivingModePage> {
   }
 
   void _addAlert(IconData icon, String title, String sub, Color color) {
-    if (_alerts.isNotEmpty && _alerts.first['title'] == title && DateTime.now().difference(_alerts.first['time'] as DateTime).inSeconds < 15) return;
+    if (_alerts.isNotEmpty &&
+        _alerts.first['title'] == title &&
+        DateTime.now().difference(_alerts.first['time'] as DateTime).inSeconds <
+            15) return;
     setState(() {
-      _alerts.insert(0, {'icon': icon, 'title': title, 'sub': sub, 'color': color, 'time': DateTime.now()});
+      _alerts.insert(0, {
+        'icon': icon,
+        'title': title,
+        'sub': sub,
+        'color': color,
+        'time': DateTime.now()
+      });
       if (_alerts.length > 3) _alerts.removeLast();
     });
   }
 
   Color _colorFromString(String? c) {
     switch (c) {
-      case 'green': return AppColors.safe;
-      case 'yellow': return AppColors.idle;
-      case 'red': return AppColors.risk;
-      default: return Colors.blue;
+      case 'green':
+        return AppColors.safe;
+      case 'yellow':
+        return AppColors.idle;
+      case 'red':
+        return AppColors.risk;
+      default:
+        return Colors.blue;
     }
   }
 
@@ -362,30 +396,52 @@ class _DrivingModePageState extends State<DrivingModePage> {
                     if (_locationError == null) ...[
                       const CircularProgressIndicator(color: AppColors.primary),
                       const SizedBox(height: 24),
-                      const Text('Getting your location...', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text('Getting your location...',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
-                      Text('Using GPS for high precision tracking', style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
+                      Text('Using GPS for high precision tracking',
+                          style: TextStyle(
+                              color: Colors.grey.shade400, fontSize: 14)),
                     ] else ...[
-                      const Icon(Icons.location_off_outlined, color: Colors.redAccent, size: 64),
+                      const Icon(Icons.location_off_outlined,
+                          color: Colors.redAccent, size: 64),
                       const SizedBox(height: 24),
-                      const Text('Location Unavailable', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                      const Text('Location Unavailable',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold)),
                       const SizedBox(height: 12),
-                      Text(_locationError!, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
+                      Text(_locationError!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: Colors.grey.shade400, fontSize: 14)),
                       const SizedBox(height: 32),
                       ElevatedButton.icon(
                         onPressed: _isRetrying ? null : _loadCurrentLocation,
-                        icon: _isRetrying ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.refresh),
+                        icon: _isRetrying
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.refresh),
                         label: Text(_isRetrying ? 'Retrying...' : 'Retry Now'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           minimumSize: const Size(200, 50),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Go Back', style: TextStyle(color: Colors.grey)),
+                        child: const Text('Go Back',
+                            style: TextStyle(color: Colors.grey)),
                       ),
                     ],
                   ],
@@ -396,23 +452,30 @@ class _DrivingModePageState extends State<DrivingModePage> {
               children: [
                 FlutterMap(
                   mapController: _mapController,
-                  options: MapOptions(initialCenter: _currentPos, initialZoom: 17),
+                  options:
+                      MapOptions(initialCenter: _currentPos, initialZoom: 17),
                   children: [
                     TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.safepulse.app',
                     ),
                     if (_polylinePoints.isNotEmpty)
                       PolylineLayer(polylines: [
-                        Polyline(points: _polylinePoints, color: _routeColor, strokeWidth: 8),
+                        Polyline(
+                            points: _polylinePoints,
+                            color: _routeColor,
+                            strokeWidth: 8),
                       ]),
                     MarkerLayer(markers: [
                       Marker(
                         point: _currentPos,
-                        width: 50, height: 50,
+                        width: 50,
+                        height: 50,
                         child: Transform.rotate(
                           angle: _heading * (3.14159 / 180),
-                          child: const Icon(Icons.navigation, color: AppColors.primary, size: 38),
+                          child: const Icon(Icons.navigation,
+                              color: AppColors.primary, size: 38),
                         ),
                       ),
                     ]),
@@ -427,23 +490,36 @@ class _DrivingModePageState extends State<DrivingModePage> {
                       FadeInDown(
                         child: Container(
                           margin: const EdgeInsets.all(16),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
-                            color: _safetyStatus == SafetyStatus.danger ? Colors.red.withOpacity(0.9) : AppColors.cardBg.withOpacity(0.95),
+                            color: _safetyStatus == SafetyStatus.danger
+                                ? Colors.red.withOpacity(0.9)
+                                : AppColors.cardBg.withOpacity(0.95),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: _safetyStatus == SafetyStatus.danger ? Colors.white : AppColors.surface),
+                            border: Border.all(
+                                color: _safetyStatus == SafetyStatus.danger
+                                    ? Colors.white
+                                    : AppColors.surface),
                           ),
                           child: Row(
                             children: [
                               Icon(
-                                _safetyStatus == SafetyStatus.danger ? Icons.gpp_bad : Icons.gpp_good,
-                                color: _safetyStatus == SafetyStatus.danger ? Colors.white : AppColors.safe,
+                                _safetyStatus == SafetyStatus.danger
+                                    ? Icons.gpp_bad
+                                    : Icons.gpp_good,
+                                color: _safetyStatus == SafetyStatus.danger
+                                    ? Colors.white
+                                    : AppColors.safe,
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   _aiSafetyMessage,
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13),
                                 ),
                               ),
                             ],
@@ -454,7 +530,8 @@ class _DrivingModePageState extends State<DrivingModePage> {
                       // Stats bar
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 16),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 14),
                         decoration: BoxDecoration(
                           color: AppColors.cardBg.withOpacity(0.95),
                           borderRadius: BorderRadius.circular(20),
@@ -462,10 +539,29 @@ class _DrivingModePageState extends State<DrivingModePage> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _statItem('Speed', '${_currentSpeed.toStringAsFixed(0)} km/h', _currentSpeed > 80 ? Colors.red : (_currentSpeed > 65 ? Colors.orange : Colors.white)),
+                            _statItem(
+                                'Speed',
+                                '${_currentSpeed.toStringAsFixed(0)} km/h',
+                                _currentSpeed > 80
+                                    ? Colors.red
+                                    : (_currentSpeed > 65
+                                        ? Colors.orange
+                                        : Colors.white)),
                             _statItem('ETA', _eta, Colors.white),
-                            _statItem('Remaining', _polylinePoints.isEmpty ? '--' : (_distanceRemaining < 1000 ? '${_distanceRemaining.round()} m' : '${(_distanceRemaining / 1000).toStringAsFixed(1)} km'), Colors.white),
-                            _statItem('Risk', _polylinePoints.isEmpty ? 'N/A' : '${widget.selectedRoute['riskScore']}', _routeColor),
+                            _statItem(
+                                'Remaining',
+                                _polylinePoints.isEmpty
+                                    ? '--'
+                                    : (_distanceRemaining < 1000
+                                        ? '${_distanceRemaining.round()} m'
+                                        : '${(_distanceRemaining / 1000).toStringAsFixed(1)} km'),
+                                Colors.white),
+                            _statItem(
+                                'Risk',
+                                _polylinePoints.isEmpty
+                                    ? 'N/A'
+                                    : '${widget.selectedRoute['riskScore']}',
+                                _routeColor),
                           ],
                         ),
                       ),
@@ -484,15 +580,28 @@ class _DrivingModePageState extends State<DrivingModePage> {
                   child: Column(
                     children: [
                       FloatingActionButton(
-                        heroTag: 'sos', 
-                        backgroundColor: _isOpeningSOS ? Colors.grey : Colors.red, 
-                        onPressed: _isOpeningSOS ? null : _triggerSOS, 
-                        child: _isOpeningSOS 
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('SOS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 12))
-                      ),
+                          heroTag: 'sos',
+                          backgroundColor:
+                              _isOpeningSOS ? Colors.grey : Colors.red,
+                          onPressed: _isOpeningSOS ? null : _triggerSOS,
+                          child: _isOpeningSOS
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2))
+                              : const Text('SOS',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      fontSize: 12))),
                       const SizedBox(height: 12),
-                      FloatingActionButton(heroTag: 'stop', backgroundColor: AppColors.cardBg, onPressed: () => Navigator.pop(context), mini: true, child: const Icon(Icons.stop, color: Colors.white)),
+                      FloatingActionButton(
+                          heroTag: 'stop',
+                          backgroundColor: AppColors.cardBg,
+                          onPressed: () => Navigator.pop(context),
+                          mini: true,
+                          child: const Icon(Icons.stop, color: Colors.white)),
                     ],
                   ),
                 ),
@@ -500,20 +609,38 @@ class _DrivingModePageState extends State<DrivingModePage> {
                 // No journey tracking card
                 if (_polylinePoints.isEmpty)
                   Positioned(
-                    bottom: 30, left: 16, right: 80,
+                    bottom: 30,
+                    left: 16,
+                    right: 80,
                     child: FadeInUp(
                       child: Container(
                         padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(color: AppColors.cardBg.withOpacity(0.95), borderRadius: BorderRadius.circular(24)),
+                        decoration: BoxDecoration(
+                            color: AppColors.cardBg.withOpacity(0.95),
+                            borderRadius: BorderRadius.circular(24)),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text('Active Speed Monitoring', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            const Text('Active Speed Monitoring',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold)),
                             const SizedBox(height: 12),
                             ElevatedButton(
-                              onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RouteSuggestionPage())),
-                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, minimumSize: const Size(double.infinity, 48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                              child: const Text('Start Full Journey', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              onPressed: () => Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) =>
+                                          const RouteSuggestionPage())),
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  minimumSize: const Size(double.infinity, 48),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12))),
+                              child: const Text('Start Full Journey',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ),
@@ -529,7 +656,9 @@ class _DrivingModePageState extends State<DrivingModePage> {
     return Column(mainAxisSize: MainAxisSize.min, children: [
       Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10)),
       const SizedBox(height: 2),
-      Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+      Text(value,
+          style: TextStyle(
+              color: color, fontWeight: FontWeight.bold, fontSize: 14)),
     ]);
   }
 
@@ -538,14 +667,25 @@ class _DrivingModePageState extends State<DrivingModePage> {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(color: (a['color'] as Color).withOpacity(0.9), borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(
+            color: (a['color'] as Color).withOpacity(0.9),
+            borderRadius: BorderRadius.circular(14)),
         child: Row(children: [
           Icon(a['icon'] as IconData, color: Colors.white, size: 18),
           const SizedBox(width: 10),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(a['title'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-            Text(a['sub'], style: const TextStyle(color: Colors.white70, fontSize: 11)),
-          ])),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(a['title'],
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13)),
+                Text(a['sub'],
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 11)),
+              ])),
         ]),
       ),
     );
@@ -557,12 +697,15 @@ class _DrivingModePageState extends State<DrivingModePage> {
 
     try {
       final result = await ApiService.startSOS(
-        lat: _currentPos.latitude, 
-        lng: _currentPos.longitude, 
-        address: 'Emergency during tracking'
-      );
+          lat: _currentPos.latitude,
+          lng: _currentPos.longitude,
+          address: 'Emergency during tracking');
       if (result != null && mounted) {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => SOSActivePage(sosId: result['sosId'], initialLocation: _currentPos)));
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => SOSActivePage(
+                    sosId: result['sosId'], initialLocation: _currentPos)));
       }
     } finally {
       if (mounted) setState(() => _isOpeningSOS = false);

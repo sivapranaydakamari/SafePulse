@@ -14,12 +14,14 @@ class SafetyAiMonitorService {
     SafetyStatus status = SafetyStatus.normal;
 
     // 1. Overspeed check
-    if (speed > 80) riskLevel += 3;
-    else if (speed > 65) riskLevel += 1;
+    if (speed > 80) {
+      riskLevel += 3;
+    } else if (speed > 65) riskLevel += 1;
 
     // 2. Risk zone check
-    if (riskZoneScore > 60) riskLevel += 2;
-    else if (riskZoneScore > 30) riskLevel += 1;
+    if (riskZoneScore > 60) {
+      riskLevel += 2;
+    } else if (riskZoneScore > 30) riskLevel += 1;
 
     // 3. Night time check (8 PM to 5 AM)
     int hour = time.hour;
