@@ -5,15 +5,20 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   battery_plus
   cloud_firestore
+  connectivity_plus
   firebase_auth
   firebase_core
+  flutter_tts
   geolocator_windows
   permission_handler_windows
   share_plus
   url_launcher_windows
+  volume_controller
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  flutter_local_notifications_windows
+  tflite_flutter
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)
