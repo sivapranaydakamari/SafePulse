@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 class ApiService {
   // Change to your server IP/domain.
   // For emulator use 10.0.2.2; for physical device use your machine's LAN IP.
-  static const String baseUrl = 'http://10.70.12.240:5000/api';
+  static const String baseUrl = 'http://10.102.19.239:5000/api';
 
   // Alerts: send overspeed or risk alerts to circle members
   static Future<void> sendSpeedAlert({
