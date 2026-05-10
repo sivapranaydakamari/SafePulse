@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import '../config/app_config.dart';
+import '../utils/error_handler.dart';
 
 class ApiService {
-  // Change to your server IP/domain.
-  // For emulator use 10.0.2.2; for physical device use your machine's LAN IP.
-  static const String baseUrl = 'http://10.102.19.239:5000/api';
+  static const String baseUrl = AppConfig.baseUrl; // no more hardcoded IP
 
   // Alerts: send overspeed or risk alerts to circle members
   static Future<void> sendSpeedAlert({
@@ -32,7 +32,9 @@ class ApiService {
           'speedLimit': limit
         }),
       );
-    } catch (_) {}
+    } catch (e, stack) {
+      AppError.log('ApiService.sendSpeedAlert', e, stack);
+    }
   }
 
   static Future<void> sendRiskAlert({
@@ -56,7 +58,9 @@ class ApiService {
           'reason': reason
         }),
       );
-    } catch (_) {}
+    } catch (e, stack) {
+      AppError.log('ApiService.sendRiskAlert', e, stack);
+    }
   }
 
   // Token management
