@@ -2,6 +2,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../models/user.dart';
+import '../models/geocode_result.dart';
+import '../models/route_suggestion.dart';
 
 class UserRepository {
   // Single source of truth for session data
@@ -89,9 +91,34 @@ class UserRepository {
     required double speed,
     required double lat,
     required double lon,
-    required int limit,
+    required double limit,
   }) {
     return ApiService.sendSpeedAlert(speed: speed, lat: lat, lon: lon, limit: limit);
+  }
+
+  Future<List<GeocodeResult>> geocodeAddress(String query) async {
+    final results = await ApiService.geocodeAddress(query);
+    return results.map((r) => GeocodeResult.fromJson(r)).toList();
+  }
+
+  Future<List<RouteSuggestion>> getRouteSuggestions({
+    required double startLat,
+    required double startLng,
+    required double destLat,
+    required double destLng,
+  }) async {
+    final results = await ApiService.suggestRoutes(
+      startLat: startLat,
+      startLng: startLng,
+      destLat: destLat,
+      destLng: destLng,
+    );
+    if (results['success'] == true && results['routes'] != null) {
+      return (results['routes'] as List)
+          .map((r) => RouteSuggestion.fromJson(r))
+          .toList();
+    }
+    return [];
   }
 
   Future<Map<String, String>> authHeaders() {

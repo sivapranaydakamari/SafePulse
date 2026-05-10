@@ -341,7 +341,7 @@ class SafePulseEngine {
       log("🚀 SOS TRIGGERED AUTONOMOUSLY BY AI!", level: LogLevel.critical);
       _updateState(EngineState.processingSos);
 
-      final position = await locationService.getCurrentPosition();
+      final position = await locationService.getCurrentPositionSafe();
       bool hasLocation = position != null;
       int? locationAgeSec =
           hasLocation && locationService.lastValidTime != null
