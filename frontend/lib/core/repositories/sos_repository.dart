@@ -9,8 +9,8 @@ class SOSRepository {
     String? address,
   }) async {
     final result = await ApiService.startSOS(lat: lat, lng: lng, address: address);
-    if (result != null) {
-      return SOSEvent.fromJson(result);
+    if (result != null && result['success'] == true && result['sosId'] != null) {
+      return await getStatus(result['sosId']);
     }
     return null;
   }

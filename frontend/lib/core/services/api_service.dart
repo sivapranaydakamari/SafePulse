@@ -467,4 +467,35 @@ class ApiService {
       return false;
     }
   }
+
+  // Support: send support email via backend Gmail
+  static Future<bool> sendSupportEmail({
+    required String name,
+    required String phone,
+    required String loginType,
+    required String subject,
+    required String message,
+  }) async {
+    try {
+      final headers = await authHeaders();
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/support/contact'),
+            headers: headers,
+            body: jsonEncode({
+              'name': name,
+              'phone': phone,
+              'loginType': loginType,
+              'subject': subject,
+              'message': message,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      debugPrint('[ApiService] sendSupportEmail error: $e');
+      return false;
+    }
+  }
 }
