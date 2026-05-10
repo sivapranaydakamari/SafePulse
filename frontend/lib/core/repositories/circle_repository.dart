@@ -29,7 +29,7 @@ class CircleRepository {
   }) async {
     final headers = await ApiService.authHeaders();
     await http.put(
-      Uri.parse('${ApiService.baseUrl}/circle/update-location'),
+      Uri.parse('${ApiService.baseUrl}/api/circle/update-location'),
       headers: {...headers, 'Content-Type': 'application/json'},
       body: jsonEncode({'lat': lat, 'lng': lng, 'batteryLevel': batteryLevel}),
     );
@@ -38,7 +38,7 @@ class CircleRepository {
   Future<List<Map<String, dynamic>>> getCircleMemberLocations(String circleId) async {
     final headers = await ApiService.authHeaders();
     final res = await http.get(
-      Uri.parse('${ApiService.baseUrl}/circle/$circleId/members-location'),
+      Uri.parse('${ApiService.baseUrl}/api/circle/$circleId/members-location'),
       headers: headers,
     );
     if (res.statusCode == 200) {
