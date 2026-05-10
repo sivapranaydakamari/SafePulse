@@ -33,20 +33,46 @@ class CircleProvider extends ChangeNotifier {
   }
 
   Future<bool> createCircle(String name) async {
-    final result = await _repo.createCircle(name);
-    if (result['success'] == true) {
-      await loadCircles();
-      return true;
+    if (_isLoading) return false;
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final result = await _repo.createCircle(name);
+      if (result['success'] == true) {
+        await loadCircles();
+        return true;
+      }
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    return false;
   }
 
   Future<bool> joinCircle(String inviteCode) async {
-    final result = await _repo.joinCircle(inviteCode);
+    if (_isLoading) return false;
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final result = await _repo.joinCircle(inviteCode);
+      if (result['success'] == true) {
+        await loadCircles();
+        return true;
+      }
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<Map<String, dynamic>> requestDeleteCircle(String circleId) async {
+    final result = await _repo.requestDeleteCircle(circleId);
     if (result['success'] == true) {
       await loadCircles();
-      return true;
     }
-    return false;
+    return result;
   }
 }
