@@ -82,3 +82,19 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Coverage Reports
+coverage/
+lcov.info
+
+# JEST
+.nyc_output/
+jest-cache/
+
+# Test Outputs
+test-results/
+reports/
+junit.xml
+
+# Large files
+*.hprof
