@@ -35,6 +35,7 @@ class ApiService {
       );
     } catch (e, stack) {
       AppError.log('ApiService.sendSpeedAlert', e, stack);
+      throw Exception('Failed to send speed alert: $e');
     }
   }
 

@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:provider/provider.dart';
 import 'package:safepulse/features/safepulse/engine/safepulse_engine.dart';
-import 'package:safepulse/features/safepulse/services/background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/services/api_service.dart';
+import '../../../core/repositories/user_repository.dart';
 import '../../auth/screens/login_screen.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -33,14 +33,12 @@ class _SettingsPageState extends State<SettingsPage> {
   EngineState engineState = EngineState.idle;
   bool useMs = true;
 
-  late StreamSubscription _logSub;
-  late StreamSubscription _speedSub;
-  late StreamSubscription _distractionSub;
-  late StreamSubscription _stateSub;
-  late StreamSubscription _callReturnedSub;
+  late UserRepository _userRepo;
+
   @override
   void initState() {
     super.initState();
+    _userRepo = context.read<UserRepository>();
     _loadSettings();
   }
 
@@ -69,8 +67,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final json =
         _emergencyContacts.map((c) => '${c['name']}|${c['phone']}').toList();
     await prefs.setStringList('emergency_contacts', json);
-    // Sync to backend so SOS SMS has up-to-date contacts
-    await ApiService.syncEmergencyContacts(_emergencyContacts);
+    await _userRepo.syncEmergencyContacts(_emergencyContacts);
   }
 
   Future<void> _saveSetting(String key, dynamic value) async {
@@ -80,6 +77,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _logout(BuildContext context) async {
+    await _userRepo.clearSession();
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     if (!context.mounted) return;
@@ -120,7 +118,7 @@ class _SettingsPageState extends State<SettingsPage> {
               setState(() => _userName = newName);
               await _saveSetting('user_name', newName);
               // Sync name to backend
-              final headers = await ApiService.authHeaders();
+              final headers = await _userRepo.authHeaders();
               // via update-name endpoint
               Navigator.pop(context);
             },
@@ -230,10 +228,6 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     bool isMonitoring = engineState == EngineState.monitoring;
-    bool isProcessing = engineState == EngineState.processingSos;
-
-    final double overspeedLimitMs = 2.0;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Settings'), elevation: 0),
@@ -274,7 +268,6 @@ class _SettingsPageState extends State<SettingsPage> {
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold)),
                           const SizedBox(height: 4),
-                          // Logic for email/phone login display
                           if (_loginType == 'email') ...[
                             Text(_userEmail,
                                 style: const TextStyle(

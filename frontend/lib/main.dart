@@ -69,13 +69,23 @@ class SafePulseApp extends StatelessWidget {
 
     return MultiProvider(
       providers: [
+        // Repositories
+        Provider.value(value: userRepo),
+        Provider.value(value: sosRepo),
+        Provider.value(value: circleRepo),
+
+        // Services
+        Provider.value(value: locationService),
+        Provider.value(value: sensorService),
+        Provider.value(value: emergencyService),
+
+        // Providers
         ChangeNotifierProvider(create: (_) => AuthProvider(userRepo)..initialize()),
         ChangeNotifierProvider(create: (_) => SOSProvider(sosRepo)),
         ChangeNotifierProvider(create: (_) => CircleProvider(circleRepo)),
         ChangeNotifierProvider(create: (_) => SafePulseProvider(sosRepo, locationService)..initialize()),
         ChangeNotifierProvider(create: (_) => TrackingProvider(sensorService)),
         ChangeNotifierProvider(create: (_) => NavigationProvider(userRepo)),
-        Provider.value(value: emergencyService),
       ],
       child: MaterialApp(
         title: 'SafePulse',

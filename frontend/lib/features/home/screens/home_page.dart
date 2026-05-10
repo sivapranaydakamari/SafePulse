@@ -6,9 +6,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:battery_plus/battery_plus.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/services/location_service.dart';
-import '../../../core/services/api_service.dart';
+import '../../../core/repositories/user_repository.dart';
 import '../../../core/theme/app_colors.dart';
 
 import '../screens/places_page.dart';
@@ -80,7 +81,7 @@ class HomeContentView extends StatefulWidget {
 
 class _HomeContentViewState extends State<HomeContentView> {
   final MapController _mapController = MapController();
-  final Battery _battery = Battery(); // ✅ optimized (single instance)
+  final Battery _battery = Battery();
 
   LatLng _center = const LatLng(17.38, 78.49);
   StreamSubscription<Position>? _positionStream;
@@ -88,10 +89,12 @@ class _HomeContentViewState extends State<HomeContentView> {
   String? _userId;
 
   bool _isOpeningSOS = false;
+  late UserRepository _userRepo;
 
   @override
   void initState() {
     super.initState();
+    _userRepo = context.read<UserRepository>();
     _loadUserId();
     _startLocationUpdates();
     _registerFCMToken();
@@ -105,15 +108,14 @@ class _HomeContentViewState extends State<HomeContentView> {
   }
 
   Future<void> _loadUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    _userId = prefs.getString('userId');
+    _userId = await _userRepo.getUserId();
   }
 
   Future<void> _registerFCMToken() async {
     try {
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null) {
-        await ApiService.updateStatus(lat: 0, lng: 0, fcmToken: token);
+        await _userRepo.updateStatus(lat: 0, lng: 0, fcmToken: token);
       }
     } catch (_) {}
   }
@@ -127,13 +129,11 @@ class _HomeContentViewState extends State<HomeContentView> {
       }
     });
 
-    /// ✅ PRODUCTION SAFE TIMER
     _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
       if (_center.latitude != 17.38) {
         try {
           final level = await _battery.batteryLevel;
-
-          await ApiService.updateStatus(
+          await _userRepo.updateStatus(
             lat: _center.latitude,
             lng: _center.longitude,
             batteryLevel: "$level%",
@@ -153,7 +153,7 @@ class _HomeContentViewState extends State<HomeContentView> {
     try {
       final pos = await LocationService.getCurrentLocation();
 
-      final result = await ApiService.startSOS(
+      final result = await _userRepo.startSOS(
         lat: pos.latitude,
         lng: pos.longitude,
         address: 'Emergency',
@@ -202,7 +202,6 @@ class _HomeContentViewState extends State<HomeContentView> {
           ],
         ),
 
-        /// 🔴 SOS Button
         Positioned(
           right: 16,
           bottom: 110,
@@ -220,7 +219,6 @@ class _HomeContentViewState extends State<HomeContentView> {
           ),
         ),
 
-        /// Bottom Panel
         Positioned(
           bottom: 16,
           left: 16,
