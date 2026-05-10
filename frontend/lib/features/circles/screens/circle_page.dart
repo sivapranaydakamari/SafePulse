@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../../../core/providers/circle_provider.dart';
+import '../../../core/providers/auth_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../core/services/api_service.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -23,9 +24,6 @@ class CirclePage extends StatefulWidget {
 class _CirclePageState extends State<CirclePage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _codeController = TextEditingController();
-  List<dynamic> _circles = [];
-  bool _isLoading = true;
-  String? _userId;
 
   int? _deviceBattery;
   BatteryState? _batteryState;
@@ -33,7 +31,9 @@ class _CirclePageState extends State<CirclePage> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CircleProvider>().loadCircles();
+    });
     _loadDeviceBattery();
   }
 
@@ -51,32 +51,7 @@ class _CirclePageState extends State<CirclePage> {
   }
 
   Future<void> _loadData() async {
-    if (!mounted) return;
-    setState(() => _isLoading = true);
-
-    final prefs = await SharedPreferences.getInstance();
-    _userId = prefs.getString('userId');
-
-    if (_userId != null) {
-      try {
-        final result = await ApiService.getUserCircles();
-        if (mounted) {
-          if (result['success'] == true) {
-            setState(() {
-              _circles = result['circles'] ?? [];
-              _isLoading = false;
-            });
-          } else {
-            setState(() => _isLoading = false);
-          }
-        }
-      } catch (e) {
-        debugPrint('[CIRCLE] loadData error: $e');
-        if (mounted) setState(() => _isLoading = false);
-      }
-    } else {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    await context.read<CircleProvider>().loadCircles();
   }
 
   // ── SHARE INVITE CODE QR ──────────────────────────────────────────────────
@@ -206,16 +181,15 @@ class _CirclePageState extends State<CirclePage> {
               child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () async {
-              final result = await ApiService.joinCircle(_codeController.text);
+              final success = await context.read<CircleProvider>().joinCircle(_codeController.text);
               if (!mounted) return;
               Navigator.pop(context);
-              if (result['success']) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text("Joined Circle Successfully!")));
-                _loadData();
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Joined Circle Successfully!")));
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(result['message'] ?? "Failed to join")));
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Failed to join")));
               }
             },
             child: const Text("Join"),
@@ -285,17 +259,14 @@ class _CirclePageState extends State<CirclePage> {
                       if (!mounted) return;
                       HapticFeedback.mediumImpact();
                       Navigator.pop(context);
-                      final result = await ApiService.joinCircle(code);
+                      final success = await context.read<CircleProvider>().joinCircle(code);
                       if (mounted) {
-                        if (result['success']) {
+                        if (success) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text("Joined Circle via QR!")));
-                          _loadData();
+                              const SnackBar(content: Text("Joined Circle via QR!")));
                         } else {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content:
-                                  Text(result['message'] ?? "Scan Failed")));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Scan Failed")));
                         }
                       }
                     }
@@ -359,14 +330,12 @@ class _CirclePageState extends State<CirclePage> {
               child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () async {
-              final result =
-                  await ApiService.createCircle(_nameController.text);
+              final success = await context.read<CircleProvider>().createCircle(_nameController.text);
               if (!mounted) return;
               Navigator.pop(context);
-              if (result['success']) {
-                final code = result['circle']['inviteCode'];
-                _loadData();
-                _showShareCodeDialog(code);
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Circle created!")));
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Failed to create circle")));
@@ -382,6 +351,8 @@ class _CirclePageState extends State<CirclePage> {
   // ── BUILD ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final circleProvider = context.watch<CircleProvider>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -395,11 +366,11 @@ class _CirclePageState extends State<CirclePage> {
       ),
       body: RefreshIndicator(
         onRefresh: _loadData,
-        child: _isLoading
+        child: circleProvider.isLoading
             ? const Center(child: CircularProgressIndicator())
-            : _circles.isEmpty
-                ? _buildEmptyState()
-                : _buildCircleList(),
+            : circleProvider.error != null
+                ? Center(child: Text(circleProvider.error!, style: const TextStyle(color: Colors.white)))
+                : circleProvider.circles.isEmpty ? _buildEmptyState() : _buildCircleList(),
       ),
     );
   }
@@ -431,11 +402,13 @@ class _CirclePageState extends State<CirclePage> {
   }
 
   Widget _buildCircleList() {
+    final circleProvider = context.read<CircleProvider>();
+
     return ListView.builder(
       padding: const EdgeInsets.all(20),
-      itemCount: _circles.length,
+      itemCount: circleProvider.circles.length,
       itemBuilder: (context, circleIndex) {
-        final circle = _circles[circleIndex];
+        final circle = circleProvider.circles[circleIndex];
         final members = (circle['members'] as List? ?? []);
         final inviteCode = circle['inviteCode'] ?? '';
 
@@ -571,9 +544,9 @@ class _CirclePageState extends State<CirclePage> {
                     isSelf: false);
               }
 
-              final Map<String, dynamic> member =
-                  Map<String, dynamic>.from(memberData);
-              final isSelf = member['_id'] == _userId;
+              final Map<String, dynamic> member = Map<String, dynamic>.from(memberData);
+              final userId = context.read<AuthProvider>().userId;
+              final isSelf = member['_id'] == userId;
               final bool isDriving = member['isDriving'] == true;
               final int speed = (member['currentSpeed'] ?? 0).toInt();
 
@@ -620,8 +593,7 @@ class _CirclePageState extends State<CirclePage> {
                 isSelf: isSelf,
               );
             }),
-
-            if (circleIndex == _circles.length - 1) ...[
+            if (circleIndex == circleProvider.circles.length - 1) ...[
               const SizedBox(height: 40),
               _buildActionButtons(),
             ],
