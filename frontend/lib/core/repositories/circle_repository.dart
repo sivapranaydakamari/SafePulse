@@ -22,6 +22,10 @@ class CircleRepository {
     return ApiService.joinCircle(inviteCode);
   }
 
+  Future<Map<String, dynamic>> requestDeleteCircle(String circleId) {
+    return ApiService.requestDeleteCircle(circleId);
+  }
+
   Future<void> updateMemberLocation({
     required double lat,
     required double lng,
