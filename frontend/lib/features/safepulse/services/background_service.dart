@@ -7,7 +7,7 @@ import 'package:battery_plus/battery_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/widgets.dart';
-import '../engine/safepulse_engine.dart';
+import '../providers/safepulse_engine.dart';
 
 @pragma('vm:entry-point')
 void notificationTapBackground(

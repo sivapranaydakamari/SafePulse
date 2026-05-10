@@ -1,5 +1,7 @@
+// MOVED FROM: lib/core/providers/auth_provider.dart
 import 'package:flutter/foundation.dart';
 import '../repositories/user_repository.dart';
+import '../models/user.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
 
@@ -10,18 +12,20 @@ class AuthProvider extends ChangeNotifier {
 
   AuthStatus _status = AuthStatus.unknown;
   String? _userId;
-  Map<String, dynamic>? _profile;
+  User? _user;
 
   AuthStatus get status => _status;
   String? get userId => _userId;
-  Map<String, dynamic>? get profile => _profile;
+  User? get user => _user;
   bool get isLoggedIn => _status == AuthStatus.authenticated;
 
-  // Called once at app startup
   Future<void> initialize() async {
     final loggedIn = await _repo.isLoggedIn();
     _userId = await _repo.getUserId();
     _status = loggedIn ? AuthStatus.authenticated : AuthStatus.unauthenticated;
+    if (loggedIn) {
+      await loadProfile();
+    }
     notifyListeners();
   }
 
@@ -32,22 +36,53 @@ class AuthProvider extends ChangeNotifier {
     await _repo.saveSession(userId: userId, token: token);
     _userId = userId;
     _status = AuthStatus.authenticated;
+    await loadProfile();
     notifyListeners();
   }
 
   Future<void> logout() async {
     await _repo.clearSession();
     _userId = null;
-    _profile = null;
+    _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
   }
 
   Future<void> loadProfile() async {
-    final result = await _repo.getProfile();
-    if (result['success'] == true) {
-      _profile = result['user'];
+    final profile = await _repo.getProfile();
+    if (profile != null) {
+      _user = profile;
       notifyListeners();
     }
+  }
+
+  Future<Map<String, dynamic>> sendOtp(String phone) {
+    return _repo.sendOtp(phone);
+  }
+
+  Future<Map<String, dynamic>> sendEmailOtp(String email, {String? name, String? phone}) {
+    return _repo.sendEmailOtp(email, name: name, phone: phone);
+  }
+
+  Future<Map<String, dynamic>> verifyOtp(String? phone, String otp, {String? email}) {
+    return _repo.verifyOtp(phone, otp, email: email);
+  }
+
+  Future<void> updateStatus({
+    required double lat,
+    required double lng,
+    String? batteryLevel,
+    bool? isDriving,
+    double? currentSpeed,
+    String? fcmToken,
+  }) {
+    return _repo.updateStatus(
+      lat: lat,
+      lng: lng,
+      batteryLevel: batteryLevel,
+      isDriving: isDriving,
+      currentSpeed: currentSpeed,
+      fcmToken: fcmToken,
+    );
   }
 }

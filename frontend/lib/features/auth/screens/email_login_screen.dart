@@ -1,6 +1,8 @@
+// MOVED FROM: lib/features/auth/screens/email_login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
-import '../../../core/services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import 'otp_screen.dart';
 
@@ -45,9 +47,10 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
     });
 
     final fullPhoneNumber = "$_selectedCountryCode$phone";
+    final authProvider = context.read<AuthProvider>();
 
-    // Call backend API to send email OTP with name and phone
-    final result = await ApiService.sendEmailOtp(email, name: name, phone: fullPhoneNumber);
+    // Use AuthProvider instead of direct ApiService call
+    final result = await authProvider.sendEmailOtp(email, name: name, phone: fullPhoneNumber);
 
     if (mounted) {
       setState(() => _isLoading = false);

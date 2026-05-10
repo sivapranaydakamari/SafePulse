@@ -1,5 +1,7 @@
+// MOVED FROM: lib/core/providers/sos_provider.dart
 import 'package:flutter/foundation.dart';
 import '../repositories/sos_repository.dart';
+import '../models/sos_event.dart';
 
 enum SOSStatus { idle, active, cancelled }
 
@@ -9,12 +11,12 @@ class SOSProvider extends ChangeNotifier {
   SOSProvider(this._repo);
 
   SOSStatus _status = SOSStatus.idle;
-  String? _activeSosId;
+  SOSEvent? _activeSos;
   bool _isLoading = false;
   Map<String, dynamic>? _nearbyData;
 
   SOSStatus get status => _status;
-  String? get activeSosId => _activeSosId;
+  SOSEvent? get activeSos => _activeSos;
   bool get isLoading => _isLoading;
   bool get isActive => _status == SOSStatus.active;
   Map<String, dynamic>? get nearbyData => _nearbyData;
@@ -30,7 +32,7 @@ class SOSProvider extends ChangeNotifier {
     try {
       final result = await _repo.startSOS(lat: lat, lng: lng, address: address);
       if (result != null) {
-        _activeSosId = result['sosId'] as String?;
+        _activeSos = result;
         _status = SOSStatus.active;
         return true;
       }
@@ -44,11 +46,11 @@ class SOSProvider extends ChangeNotifier {
   }
 
   Future<void> cancelSOS() async {
-    if (_activeSosId == null) return;
-    final success = await _repo.cancelSOS(_activeSosId!);
+    if (_activeSos == null) return;
+    final success = await _repo.cancelSOS(_activeSos!.id);
     if (success) {
       _status = SOSStatus.cancelled;
-      _activeSosId = null;
+      _activeSos = null;
       notifyListeners();
     }
   }
@@ -60,7 +62,8 @@ class SOSProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      _nearbyData = await _repo.getNearbyServices(lat: lat, lon: lon);
+      final response = await _repo.getNearbyServices(lat: lat, lon: lon);
+      _nearbyData = response?.toJson(); // Keeping dynamic map for UI compatibility but using model internally
     } catch (e) {
       debugPrint('[SOSProvider] loadNearbyServices error: $e');
     } finally {
@@ -69,9 +72,22 @@ class SOSProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> refreshSOSStatus() async {
+    if (_activeSos == null) return;
+    try {
+      final updated = await _repo.getSOSStatus(_activeSos!.id);
+      if (updated != null) {
+        _activeSos = updated;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[SOSProvider] refreshSOSStatus error: $e');
+    }
+  }
+
   void reset() {
     _status = SOSStatus.idle;
-    _activeSosId = null;
+    _activeSos = null;
     notifyListeners();
   }
 }
