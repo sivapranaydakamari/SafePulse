@@ -52,41 +52,102 @@ class _CirclePageState extends State<CirclePage> {
     context.read<CircleProvider>().loadCircles();
   }
 
+  // ── SCANNER LOGIC ──────────────────────────────────────────────────────────
+  void _showScanner() async {
+    final status = await Permission.camera.request();
+    if (status.isDenied) return;
+
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.black,
+      builder: (ctx) => Column(
+        children: [
+          const SizedBox(height: 50),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("Scan Invite QR", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(ctx)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: MobileScanner(
+              controller: MobileScannerController(
+                facing: CameraFacing.back,
+                torchEnabled: false,
+              ),
+              onDetect: (capture) async {
+                final List<Barcode> barcodes = capture.barcodes;
+                if (barcodes.isNotEmpty) {
+                  final String code = barcodes.first.rawValue ?? "";
+                  if (code.isNotEmpty) {
+                    Navigator.pop(ctx);
+                    final success = await context.read<CircleProvider>().joinCircle(code);
+                    if (mounted) {
+                      if (!success) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Join failed or invalid code")));
+                      }
+                    }
+                  }
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 50),
+        ],
+      ),
+    );
+  }
+
   void _showCreateCircleDialog() {
     _nameController.clear();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Create New Circle", style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: _nameController,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            labelText: "Circle Name",
-            labelStyle: TextStyle(color: AppColors.textSecondary),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.surface)),
+      builder: (context) => Consumer<CircleProvider>(
+        builder: (context, provider, child) => AlertDialog(
+          backgroundColor: AppColors.cardBg,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("Create New Circle", style: TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: _nameController,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              labelText: "Circle Name",
+              labelStyle: TextStyle(color: AppColors.textSecondary),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.surface)),
+            ),
           ),
+          actions: [
+            TextButton(
+                onPressed: provider.isLoading ? null : () => Navigator.pop(context),
+                child: const Text("CANCEL", style: TextStyle(color: Colors.grey))),
+            ElevatedButton(
+              onPressed: provider.isLoading
+                  ? null
+                  : () async {
+                      final name = _nameController.text.trim();
+                      if (name.isNotEmpty) {
+                        final success = await provider.createCircle(name);
+                        if (mounted) {
+                          Navigator.pop(context);
+                          if (!success) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to create circle")));
+                          }
+                        }
+                      }
+                    },
+              child: provider.isLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                  : const Text("CREATE"),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCEL", style: TextStyle(color: Colors.grey))),
-          ElevatedButton(
-            onPressed: () async {
-              final name = _nameController.text.trim();
-              if (name.isNotEmpty) {
-                final success = await context.read<CircleProvider>().createCircle(name);
-                if (mounted) {
-                  Navigator.pop(context);
-                  if (!success) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to create circle")));
-                  }
-                }
-              }
-            },
-            child: const Text("CREATE"),
-          ),
-        ],
       ),
     );
   }
@@ -95,37 +156,46 @@ class _CirclePageState extends State<CirclePage> {
     _codeController.clear();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.cardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Join a Circle", style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: _codeController,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            labelText: "Invite Code",
-            labelStyle: TextStyle(color: AppColors.textSecondary),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.surface)),
+      builder: (context) => Consumer<CircleProvider>(
+        builder: (context, provider, child) => AlertDialog(
+          backgroundColor: AppColors.cardBg,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text("Join a Circle", style: TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: _codeController,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              labelText: "Invite Code",
+              labelStyle: TextStyle(color: AppColors.textSecondary),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.surface)),
+            ),
           ),
+          actions: [
+            TextButton(
+                onPressed: provider.isLoading ? null : () => Navigator.pop(context),
+                child: const Text("CANCEL", style: TextStyle(color: Colors.grey))),
+            ElevatedButton(
+              onPressed: provider.isLoading
+                  ? null
+                  : () async {
+                      final code = _codeController.text.trim().toUpperCase();
+                      if (code.isNotEmpty) {
+                        final success = await provider.joinCircle(code);
+                        if (mounted) {
+                          Navigator.pop(context);
+                          if (!success) {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(const SnackBar(content: Text("Invalid code or already joined")));
+                          }
+                        }
+                      }
+                    },
+              child: provider.isLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                  : const Text("JOIN"),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("CANCEL", style: TextStyle(color: Colors.grey))),
-          ElevatedButton(
-            onPressed: () async {
-              final code = _codeController.text.trim().toUpperCase();
-              if (code.isNotEmpty) {
-                final success = await context.read<CircleProvider>().joinCircle(code);
-                if (mounted) {
-                  Navigator.pop(context);
-                  if (!success) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Invalid code or already joined")));
-                  }
-                }
-              }
-            },
-            child: const Text("JOIN"),
-          ),
-        ],
       ),
     );
   }
@@ -172,9 +242,19 @@ class _CirclePageState extends State<CirclePage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Your Circles", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text("Circles", style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
         backgroundColor: Colors.transparent,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner, color: AppColors.primary),
+            onPressed: _showScanner,
+          ),
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),
+            onPressed: _showCreateCircleDialog,
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadData,
@@ -185,26 +265,11 @@ class _CirclePageState extends State<CirclePage> {
                 ? _buildEmptyState() 
                 : _buildCircleList(provider.circles),
       ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            onPressed: _showJoinCircleDialog,
-            heroTag: 'join',
-            icon: const Icon(Icons.group_add),
-            label: const Text("JOIN"),
-            backgroundColor: AppColors.secondary,
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            onPressed: _showCreateCircleDialog,
-            heroTag: 'create',
-            icon: const Icon(Icons.add),
-            label: const Text("CREATE"),
-            backgroundColor: AppColors.primary,
-          ),
-        ],
-      ),
+      floatingActionButton: provider.circles.isNotEmpty ? FloatingActionButton(
+        onPressed: _showJoinCircleDialog,
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.person_add),
+      ) : null,
     );
   }
 
@@ -218,19 +283,12 @@ class _CirclePageState extends State<CirclePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             FadeInDown(
-              child: Container(
-                padding: const EdgeInsets.all(30),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.group_outlined, size: 80, color: AppColors.primary),
-              ),
+              child: const Icon(Icons.group_outlined, size: 80, color: AppColors.primary),
             ),
             const SizedBox(height: 32),
             FadeInUp(
               child: const Text(
-                "Keep your family safe",
+                "Your Circles",
                 style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
@@ -239,7 +297,7 @@ class _CirclePageState extends State<CirclePage> {
             FadeInUp(
               delay: const Duration(milliseconds: 200),
               child: const Text(
-                "Create a circle to track your loved ones or join an existing one using a code.",
+                "Create a circle to start tracking your family and friends, or join an existing one using a code.",
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
                 textAlign: TextAlign.center,
               ),
@@ -247,34 +305,54 @@ class _CirclePageState extends State<CirclePage> {
             const SizedBox(height: 40),
             FadeInUp(
               delay: const Duration(milliseconds: 400),
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _showJoinCircleDialog,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: AppColors.secondary),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      child: const Text("JOIN CIRCLE", style: TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold)),
-                    ),
+                  _buildActionCard(
+                    icon: Icons.qr_code_scanner,
+                    label: "Scan QR Code",
+                    color: AppColors.primary,
+                    onTap: _showScanner,
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _showCreateCircleDialog,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                      child: const Text("CREATE NEW", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                    ),
+                  const SizedBox(height: 16),
+                  _buildActionCard(
+                    icon: Icons.group_add,
+                    label: "Join with Code",
+                    color: AppColors.secondary,
+                    onTap: _showJoinCircleDialog,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildActionCard(
+                    icon: Icons.add,
+                    label: "Create New Circle",
+                    color: AppColors.cardBg,
+                    onTap: _showCreateCircleDialog,
                   ),
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionCard({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(width: 16),
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
+            const Spacer(),
+            Icon(Icons.chevron_right, color: color.withOpacity(0.5)),
           ],
         ),
       ),
@@ -340,10 +418,50 @@ class _CirclePageState extends State<CirclePage> {
           ),
         ),
         IconButton(
+          icon: const Icon(Icons.delete_outline, color: Colors.white, size: 24), 
+          onPressed: () => _showDeleteConfirmation(circle)
+        ),
+        IconButton(
           icon: const Icon(Icons.qr_code_2, color: Colors.white, size: 28), 
           onPressed: () => _showShareCodeDialog(circle.inviteCode)
         ),
       ]),
+    );
+  }
+
+  void _showDeleteConfirmation(Circle circle) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Delete Circle?", style: TextStyle(color: Colors.white)),
+        content: const Text(
+          "Consensus Deletion: All members must vote to delete for the circle to be removed. Your vote will be recorded.",
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCEL")),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final result = await context.read<CircleProvider>().requestDeleteCircle(circle.id);
+              if (mounted) {
+                if (result['success'] == true) {
+                  final msg = result['deleted'] == true 
+                    ? "Circle deleted successfully!" 
+                    : "Vote recorded. ${result['votes']}/${result['totalNeeded']} votes.";
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['error'] ?? "Failed to vote")));
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("VOTE DELETE"),
+          ),
+        ],
+      ),
     );
   }
 }

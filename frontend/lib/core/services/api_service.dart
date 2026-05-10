@@ -419,6 +419,19 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> requestDeleteCircle(String circleId) async {
+    try {
+      final headers = await authHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/circle/$circleId/request-delete'),
+        headers: headers,
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
   // SafePulse specific SOS (from safepulse/services/api_service.dart)
   static Future<bool> sendSafePulseSOS(
     double lat,
