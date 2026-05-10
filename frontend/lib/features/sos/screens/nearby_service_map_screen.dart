@@ -209,8 +209,7 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
 
       if (mounted) Navigator.pop(context); // hide loading
 
-      if (routesData['routes'] != null &&
-          (routesData['routes'] as List).isNotEmpty) {
+      if (routesData['routes'] != null && (routesData['routes'] as List).isNotEmpty) {
         final routes = routesData['routes'] as List<dynamic>;
         if (mounted) {
           Navigator.push(
