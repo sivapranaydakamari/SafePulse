@@ -27,8 +27,6 @@ const userSchema = new mongoose.Schema({
   fcmToken: { type: String }, // For push notifications
   lastSeen: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
-  otp: { type: String },
-  otpExpiry: { type: Date },
   lastSpeedAlert: { type: Date },
   lastRiskAlert: { type: Date },
 

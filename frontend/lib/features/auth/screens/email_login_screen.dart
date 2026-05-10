@@ -15,29 +15,14 @@ class EmailLoginScreen extends StatefulWidget {
 
 class _EmailLoginScreenState extends State<EmailLoginScreen> {
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final String _selectedCountryCode = "+91";
   bool _isLoading = false;
   String? _errorMessage;
 
   void _handleLogin() async {
     final email = _emailController.text.trim();
-    final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
     
-    if (name.isEmpty || name.length < 2) {
-      setState(() => _errorMessage = "Please enter your full name");
-      return;
-    }
-
     if (email.isEmpty || !email.contains('@')) {
       setState(() => _errorMessage = "Please enter a valid email address");
-      return;
-    }
-
-    if (phone.length != 10 || !RegExp(r'^[0-9]+$').hasMatch(phone)) {
-      setState(() => _errorMessage = "Enter a valid 10-digit mobile number");
       return;
     }
 
@@ -46,11 +31,10 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
       _errorMessage = null;
     });
 
-    final fullPhoneNumber = "$_selectedCountryCode$phone";
     final authProvider = context.read<AuthProvider>();
 
     // Use AuthProvider instead of direct ApiService call
-    final result = await authProvider.sendEmailOtp(email, name: name, phone: fullPhoneNumber);
+    final result = await authProvider.sendEmailOtp(email);
 
     if (mounted) {
       setState(() => _isLoading = false);
@@ -87,7 +71,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Registration",
+                      "Email Login",
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
@@ -95,7 +79,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "Complete your profile to receive a verification code",
+                      "Enter your email to receive a verification code",
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.textSecondary,
                           ),
@@ -104,39 +88,6 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              // 1. Name Field
-              FadeInLeft(
-                delay: const Duration(milliseconds: 200),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.surface),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person_outline, color: AppColors.textPrimary, size: 20),
-                      const SizedBox(width: 16),
-                      Container(height: 24, width: 1, color: AppColors.surface),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: _nameController,
-                          textCapitalization: TextCapitalization.words,
-                          style: const TextStyle(color: AppColors.textPrimary),
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            hintText: "Full Name",
-                            hintStyle: TextStyle(color: AppColors.textSecondary),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
               // 2. Email Field
               FadeInLeft(
                 delay: const Duration(milliseconds: 300),
@@ -161,39 +112,6 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                           decoration: const InputDecoration(
                             border: InputBorder.none,
                             hintText: "Email Address",
-                            hintStyle: TextStyle(color: AppColors.textSecondary),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // 3. Phone Field
-              FadeInLeft(
-                delay: const Duration(milliseconds: 400),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.surface),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      Text(_selectedCountryCode, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 12),
-                      Container(height: 24, width: 1, color: AppColors.surface),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          style: const TextStyle(color: AppColors.textPrimary),
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            hintText: "Phone Number",
                             hintStyle: TextStyle(color: AppColors.textSecondary),
                           ),
                         ),

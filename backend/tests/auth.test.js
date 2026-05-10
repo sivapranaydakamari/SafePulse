@@ -3,10 +3,22 @@ const request = require('supertest');
 const authRoutes = require('../routes/auth');
 
 // Mock User model to prevent DB calls
-jest.mock('../models/User', () => ({
+jest.mock('../models/User', () => {
+  const mockUser = function(data) {
+    Object.assign(this, data);
+    this.save = jest.fn().mockResolvedValue(this);
+  };
+  mockUser.findOne = jest.fn();
+  mockUser.findByIdAndUpdate = jest.fn();
+  mockUser.findById = jest.fn();
+  return mockUser;
+});
+
+// Mock OTP model
+jest.mock('../models/OTP', () => ({
   findOne: jest.fn(),
-  findByIdAndUpdate: jest.fn(),
-  findById: jest.fn()
+  findOneAndUpdate: jest.fn(),
+  deleteOne: jest.fn()
 }));
 
 // Mock Email Service
@@ -46,10 +58,17 @@ describe('Auth Routes (Coverage for error paths)', () => {
     expect(res.body.success).toBe(false);
   });
 
-  it('POST /api/auth/verify-otp - returns 404 if user not found', async () => {
+  it('POST /api/auth/verify-otp - creates new user if not found', async () => {
+    const OTP = require('../models/OTP');
+    OTP.findOne.mockResolvedValueOnce({ _id: 'otp_id', identifier: '123', otp: '123456', expiresAt: new Date(Date.now() + 10000) });
     User.findOne.mockResolvedValueOnce(null);
+    
     const res = await request(app).post('/api/auth/verify-otp').send({ phone: '123', otp: '123456' });
-    expect(res.statusCode).toBe(404);
+    
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.token).toBeDefined();
+    expect(res.body.user.name).toBe('SafePulse User');
   });
 
   it('POST /api/auth/update-status - succeeds with valid token', async () => {

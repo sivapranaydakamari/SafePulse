@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const OTP = require('../models/OTP');
 const twilio = require('twilio');
 const { signToken, requireAuth } = require('../middleware/auth');
 const emailService = require('../services/email_service');
@@ -20,18 +21,15 @@ router.post('/send-otp', async (req, res) => {
   if (!phone) return res.status(400).json({ success: false, error: 'Phone number is required' });
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpExpiry = new Date(Date.now() + 10 * 60000); // 10 minutes
+  const expiresAt = new Date(Date.now() + 10 * 60000); // 10 minutes
 
   try {
-    let user = await User.findOne({ phone });
-    if (!user) {
-      user = new User({ phone, name: 'SafePulse User', otp, otpExpiry, loginType: 'phone' });
-    } else {
-      user.otp = otp;
-      user.otpExpiry = otpExpiry;
-      user.loginType = 'phone';
-    }
-    await user.save();
+    // Save OTP to temporary model
+    await OTP.findOneAndUpdate(
+      { identifier: phone },
+      { otp, expiresAt },
+      { upsert: true, new: true }
+    );
 
     if (client && twilioPhone) {
       await client.messages.create({
@@ -41,7 +39,6 @@ router.post('/send-otp', async (req, res) => {
       });
       console.log(`[AUTH] OTP sent to ${phone}`);
     } else {
-      // Dev mode: log OTP so developer can test without Twilio
       console.warn(`[AUTH] DEV MODE — OTP for ${phone}: ${otp}`);
     }
 
@@ -53,64 +50,67 @@ router.post('/send-otp', async (req, res) => {
 });
 
 router.post('/send-email-otp', async (req, res) => {
-  const { email, name, phone } = req.body;
-  console.log(`[AUTH] send-email-otp request: email=${email}, name=${name}, phone=${phone}`);
+  const { email } = req.body;
   if (!email) return res.status(400).json({ success: false, error: 'Email is required' });
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpExpiry = new Date(Date.now() + 10 * 60000);
+  const expiresAt = new Date(Date.now() + 10 * 60000);
 
   try {
-    let user = await User.findOne({ email });
-    if (!user) {
-      if (!phone || !name) {
-        console.log('[AUTH] Missing name/phone for new registration');
-        return res.status(400).json({ success: false, error: 'Name and Phone are required for new registration' });
-      }
-      user = new User({ email, phone, name, otp, otpExpiry, loginType: 'email' });
-      console.log('[AUTH] Creating new user for email:', email);
-    } else {
-      user.otp = otp;
-      user.otpExpiry = otpExpiry;
-      user.loginType = 'email';
-      if (name) user.name = name;
-      if (phone) user.phone = phone;
-      console.log('[AUTH] Existing user found, updating OTP for:', email);
-    }
-    await user.save();
-    console.log('[AUTH] User saved. Sending email OTP...');
+    await OTP.findOneAndUpdate(
+      { identifier: email },
+      { otp, expiresAt },
+      { upsert: true, new: true }
+    );
 
     const sent = await emailService.sendEmailOTP(email, otp);
-    console.log('[AUTH] Email send result:', sent);
     if (!sent) return res.status(500).json({ success: false, error: 'Failed to send verification email' });
 
     console.log(`[AUTH] ✅ OTP sent to ${email}: ${otp}`);
     res.json({ success: true, message: 'Verification code sent to your email' });
   } catch (error) {
     console.error('[AUTH] send-email-otp error:', error.message);
-    console.error('[AUTH] Full error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 router.post('/verify-otp', async (req, res) => {
   const { phone, email, otp } = req.body;
+  const identifier = email || phone;
+
+  if (!identifier || !otp) {
+    return res.status(400).json({ success: false, error: 'Identifier and OTP are required' });
+  }
 
   try {
-    const query = email ? { email } : { phone };
-    const user = await User.findOne(query);
-    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
-
-    if (user.otp !== otp) {
+    // 1. Verify OTP
+    const otpRecord = await OTP.findOne({ identifier, otp });
+    if (!otpRecord) {
       return res.status(400).json({ success: false, error: 'Invalid OTP' });
     }
-    if (user.otpExpiry && new Date() > user.otpExpiry) {
-      return res.status(400).json({ success: false, error: 'OTP has expired. Please request a new one.' });
+
+    // 2. Check expiry
+    if (otpRecord.expiresAt < new Date()) {
+      await OTP.deleteOne({ _id: otpRecord._id });
+      return res.status(400).json({ success: false, error: 'OTP has expired' });
     }
 
-    user.otp = undefined;
-    user.otpExpiry = undefined;
-    await user.save();
+    // 3. Delete OTP record
+    await OTP.deleteOne({ _id: otpRecord._id });
+
+    // 4. Find or Create User (Auto Register)
+    let user = await User.findOne(email ? { email } : { phone });
+    
+    if (!user) {
+      console.log(`[AUTH] Creating new user for ${identifier}`);
+      user = new User({
+        email: email || undefined,
+        phone: phone || undefined,
+        name: 'SafePulse User',
+        loginType: email ? 'email' : 'phone'
+      });
+      await user.save();
+    }
 
     const token = signToken(user._id.toString());
 
