@@ -5,6 +5,7 @@ import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/repositories/sos_repository.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SosService {
   final SOSRepository _sosRepo;
@@ -96,6 +97,38 @@ class SosService {
 
     print("SosService: Delegating SMS and Call to UI Isolate to bypass restrictions.");
     onEmergencySOS?.call(emergencyContacts, payload);
+
+    print("SosService: Executing fallback SOS directly from background isolate.");
+    _executeEmergencySOSLocal(emergencyContacts, payload);
+  }
+
+  Future<void> _executeEmergencySOSLocal(List<String> contacts, String payload) async {
+    for (String number in contacts) {
+      try {
+        await telephony.sendSms(to: number, message: payload);
+        print("[SosService Background] SMS sent to $number");
+      } catch (e) {
+        print("[SosService Background] SMS Failed to $number: $e");
+      }
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    if (contacts.isNotEmpty) {
+      print("[SosService Background] Triggering call to: ${contacts.first}");
+      try {
+        await FlutterPhoneDirectCaller.callNumber(contacts.first);
+      } catch (e) {
+        print("[SosService Background] Call Failed with direct caller: $e, falling back to url_launcher...");
+        try {
+          final Uri url = Uri.parse("tel:${contacts.first}");
+          if (await canLaunchUrl(url)) {
+            await launchUrl(url);
+          }
+        } catch (e2) {
+          print("[SosService Background] url_launcher also failed: $e2");
+        }
+      }
+    }
   }
 
   void checkCallReturn() {
