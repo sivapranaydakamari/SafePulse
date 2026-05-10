@@ -134,4 +134,48 @@ router.put('/update-location', requireAuth, async (req, res) => {
   }
 });
 
+// POST /circle/:circleId/request-delete — vote to delete circle
+router.post('/:circleId/request-delete', requireAuth, async (req, res) => {
+  try {
+    const circle = await Circle.findById(req.params.circleId);
+    if (!circle) return res.status(404).json({ success: false, message: 'Circle not found' });
+
+    // Check if user is member
+    if (!circle.members.some(m => m.toString() === req.userId)) {
+      return res.status(403).json({ success: false, message: 'Not a member' });
+    }
+
+    // Add user to deletion requests (idempotent)
+    const userIdStr = req.userId.toString();
+    const alreadyVoted = circle.deletionRequests.some(r => r.toString() === userIdStr);
+    
+    if (!alreadyVoted) {
+      circle.deletionRequests.push(req.userId);
+      await circle.save();
+    }
+
+    // Check consensus
+    if (circle.deletionRequests.length >= circle.members.length) {
+      // DELETE CIRCLE
+      await Circle.findByIdAndDelete(circle._id);
+      // Remove from all users
+      await User.updateMany(
+        { circles: circle._id },
+        { $pull: { circles: circle._id } }
+      );
+      return res.json({ success: true, deleted: true, message: 'Circle deleted by consensus' });
+    }
+
+    res.json({ 
+      success: true, 
+      deleted: false, 
+      votes: circle.deletionRequests.length, 
+      totalNeeded: circle.members.length 
+    });
+  } catch (error) {
+    console.error(`[CIRCLE] delete error: ${error.message}`);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

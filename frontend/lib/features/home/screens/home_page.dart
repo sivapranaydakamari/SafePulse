@@ -17,6 +17,7 @@ import '../../profile/screens/settings_page.dart';
 import '../../circles/screens/circle_page.dart';
 import '../../sos/screens/sos_hub_page.dart';
 import '../../sos/screens/sos_active_page.dart';
+import '../../../core/providers/sos_provider.dart';
 import 'driving_mode_page.dart';
 import 'route_suggestion_page.dart';
 
@@ -146,27 +147,26 @@ class _HomeContentViewState extends State<HomeContentView> {
   }
 
   Future<void> _triggerSOS() async {
-    if (_userId == null || _isOpeningSOS) return;
-
+    if (_isOpeningSOS) return;
     setState(() => _isOpeningSOS = true);
 
     try {
       final pos = await LocationService.getCurrentLocation();
-
-      final result = await _userRepo.startSOS(
+      final success = await context.read<SOSProvider>().startSOS(
         lat: pos.latitude,
         lng: pos.longitude,
-        address: 'Emergency',
+        address: 'Home Emergency',
       );
 
       if (!mounted) return;
 
-      if (result != null) {
+      if (success) {
+        final sosId = context.read<SOSProvider>().activeSosId;
         await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => SOSActivePage(
-              sosId: result['sosId'],
+              sosId: sosId!,
               initialLocation: LatLng(pos.latitude, pos.longitude),
             ),
           ),
