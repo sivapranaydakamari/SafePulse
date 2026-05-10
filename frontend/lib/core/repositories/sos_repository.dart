@@ -49,4 +49,34 @@ class SOSRepository {
       locationAgeSec: locationAgeSec,
     );
   }
+
+  Future<Map<String, dynamic>> getServicesInBBox({
+    required double south,
+    required double west,
+    required double north,
+    required double east,
+    String type = 'all',
+  }) {
+    return ApiService.getServicesInBBox(
+      south: south,
+      west: west,
+      north: north,
+      east: east,
+      type: type,
+    );
+  }
+
+  Future<Map<String, dynamic>> suggestRoutes({
+    required double startLat,
+    required double startLng,
+    required double destLat,
+    required double destLng,
+  }) {
+    return ApiService.suggestRoutes(
+      startLat: startLat,
+      startLng: startLng,
+      destLat: destLat,
+      destLng: destLng,
+    );
+  }
 }

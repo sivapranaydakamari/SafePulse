@@ -7,7 +7,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/services/api_service.dart';
+import '../../../core/repositories/user_repository.dart';
 import '../../../core/services/dnd_service.dart';
 import '../../../core/services/safety_ai_service.dart';
 import '../../../core/providers/sos_provider.dart';
@@ -256,7 +256,7 @@ class _DrivingModePageState extends State<DrivingModePage> {
     _dndActive = true;
     DndService.setDndOn();
     _addAlert(Icons.do_not_disturb_on, 'DND Active', 'High speed detected. Focus on road.', Colors.red);
-    ApiService.sendSpeedAlert(speed: speed, lat: pos.latitude, lon: pos.longitude, limit: 80);
+    context.read<UserRepository>().sendSpeedAlert(speed: speed, lat: pos.latitude, lon: pos.longitude, limit: 80);
   }
 
   void _stopOverspeedResponse() {

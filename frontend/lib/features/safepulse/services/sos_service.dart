@@ -4,10 +4,13 @@ import 'package:telephony/telephony.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../core/services/api_service.dart';
+import '../../../core/repositories/sos_repository.dart';
 
 class SosService {
+  final SOSRepository _sosRepo;
   final Telephony telephony = Telephony.instance;
+
+  SosService(this._sosRepo);
 
   List<String> emergencyContacts = [];
 
@@ -42,7 +45,7 @@ class SosService {
     // Fire online in background
     print("SosService: Firing ONLINE SOS...");
     unawaited(
-      ApiService.sendSafePulseSOS(
+      _sosRepo.sendSafePulseSOS(
         lat,
         lng,
         "HIGH",

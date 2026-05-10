@@ -76,4 +76,25 @@ class UserRepository {
   Future<void> syncEmergencyContacts(List<Map<String, String>> contacts) {
     return ApiService.syncEmergencyContacts(contacts);
   }
+
+  Future<Map<String, dynamic>?> startSOS({
+    required double lat,
+    required double lng,
+    String? address,
+  }) {
+    return ApiService.startSOS(lat: lat, lng: lng, address: address);
+  }
+
+  Future<void> sendSpeedAlert({
+    required double speed,
+    required double lat,
+    required double lon,
+    required int limit,
+  }) {
+    return ApiService.sendSpeedAlert(speed: speed, lat: lat, lon: lon, limit: limit);
+  }
+
+  Future<Map<String, String>> authHeaders() {
+    return ApiService.authHeaders();
+  }
 }
