@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 class ApiService {
   // Change to your server IP/domain.
   // For emulator use 10.0.2.2; for physical device use your machine's LAN IP.
-  static const String baseUrl = 'http://10.102.19.239:5000/api';
+  static const String baseUrl = 'http://10.34.186.36:5000';
 
   // Alerts: send overspeed or risk alerts to circle members
   static Future<void> sendSpeedAlert({
@@ -22,7 +22,7 @@ class ApiService {
 
       final headers = await authHeaders();
       await http.post(
-        Uri.parse('$baseUrl/alerts/speed'),
+        Uri.parse('$baseUrl/api/alerts/speed'),
         headers: headers,
         body: jsonEncode({
           'userId': userId,
@@ -47,14 +47,10 @@ class ApiService {
 
       final headers = await authHeaders();
       await http.post(
-        Uri.parse('$baseUrl/alerts/risk'),
+        Uri.parse('$baseUrl/api/alerts/risk'),
         headers: headers,
-        body: jsonEncode({
-          'userId': userId,
-          'lat': lat,
-          'lon': lon,
-          'reason': reason
-        }),
+        body: jsonEncode(
+            {'userId': userId, 'lat': lat, 'lon': lon, 'reason': reason}),
       );
     } catch (_) {}
   }
@@ -76,59 +72,79 @@ class ApiService {
   // Auth
   static Future<Map<String, dynamic>> sendOtp(String phone) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/send-otp'),
-        headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode({'phone': phone}),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/auth/send-otp'),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({'phone': phone}),
+          )
+          .timeout(const Duration(seconds: 15));
       return jsonDecode(response.body);
     } catch (e) {
-      return {'success': false, 'error': 'Failed to send OTP. Check connection.'};
+      return {
+        'success': false,
+        'error': 'Failed to send OTP. Check connection.'
+      };
     }
   }
 
-  static Future<Map<String, dynamic>> sendEmailOtp(String email, {String? name, String? phone}) async {
+  static Future<Map<String, dynamic>> sendEmailOtp(String email,
+      {String? name, String? phone}) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/send-email-otp'),
-        headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          if (name != null) 'name': name,
-          if (phone != null) 'phone': phone,
-        }),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/auth/send-email-otp'),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': email,
+              if (name != null) 'name': name,
+              if (phone != null) 'phone': phone,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
       return jsonDecode(response.body);
     } catch (e) {
       debugPrint('[API] sendEmailOtp error: $e');
-      return {'success': false, 'error': 'Cannot reach server at $baseUrl. Ensure your phone and PC are on the same Wi-Fi. Error: $e'};
+      return {
+        'success': false,
+        'error':
+            'Cannot reach server at $baseUrl. Ensure your phone and PC are on the same Wi-Fi. Error: $e'
+      };
     }
   }
 
-  static Future<Map<String, dynamic>> verifyOtp(String? phone, String otp, {String? email}) async {
+  static Future<Map<String, dynamic>> verifyOtp(String? phone, String otp,
+      {String? email}) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/verify-otp'),
-        headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          if (phone != null) 'phone': phone,
-          if (email != null) 'email': email,
-          'otp': otp,
-        }),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/auth/verify-otp'),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              if (phone != null) 'phone': phone,
+              if (email != null) 'email': email,
+              'otp': otp,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
       return jsonDecode(response.body);
     } catch (e) {
-      return {'success': false, 'error': 'Verification failed. Check connection.'};
+      return {
+        'success': false,
+        'error': 'Verification failed. Check connection.'
+      };
     }
   }
 
   static Future<Map<String, dynamic>> getMyProfile() async {
     try {
       final headers = await authHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/auth/me'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/auth/me'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 10));
       return jsonDecode(response.body);
     } catch (e) {
       return {'success': false, 'error': e.toString()};
@@ -147,17 +163,19 @@ class ApiService {
   }) async {
     try {
       final headers = await authHeaders();
-      await http.post(
-        Uri.parse('$baseUrl/auth/update-status'),
-        headers: headers,
-        body: jsonEncode({
-          'location': {'lat': lat, 'lng': lng},
-          if (batteryLevel != null) 'batteryLevel': batteryLevel,
-          if (isDriving    != null) 'isDriving':    isDriving,
-          if (currentSpeed != null) 'currentSpeed': currentSpeed,
-          if (fcmToken     != null) 'fcmToken':     fcmToken,
-        }),
-      ).timeout(const Duration(seconds: 10));
+      await http
+          .post(
+            Uri.parse('$baseUrl/api/auth/update-status'),
+            headers: headers,
+            body: jsonEncode({
+              'location': {'lat': lat, 'lng': lng},
+              if (batteryLevel != null) 'batteryLevel': batteryLevel,
+              if (isDriving != null) 'isDriving': isDriving,
+              if (currentSpeed != null) 'currentSpeed': currentSpeed,
+              if (fcmToken != null) 'fcmToken': fcmToken,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
     } catch (e) {
       debugPrint('[API] updateStatus failed: $e');
     }
@@ -172,14 +190,16 @@ class ApiService {
   }) async {
     try {
       final headers = await authHeaders();
-      final response = await http.post(
-        Uri.parse('$baseUrl/routes/suggest'),
-        headers: headers,
-        body: jsonEncode({
-          'start':       {'lat': startLat, 'lng': startLng},
-          'destination': {'lat': destLat,  'lng': destLng},
-        }),
-      ).timeout(const Duration(seconds: 20));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/routes/suggest'),
+            headers: headers,
+            body: jsonEncode({
+              'start': {'lat': startLat, 'lng': startLng},
+              'destination': {'lat': destLat, 'lng': destLng},
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
       return jsonDecode(response.body);
     } catch (e) {
       return {'error': 'Failed to get routes: $e'};
@@ -194,15 +214,17 @@ class ApiService {
   }) async {
     try {
       final headers = await authHeaders();
-      final response = await http.post(
-        Uri.parse('$baseUrl/sos/start'),
-        headers: headers,
-        body: jsonEncode({
-          'lat': lat,
-          'lng': lng,
-          'address': address ?? 'Emergency Location',
-        }),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/sos/start'),
+            headers: headers,
+            body: jsonEncode({
+              'lat': lat,
+              'lng': lng,
+              'address': address ?? 'Emergency Location',
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 201) return jsonDecode(response.body);
       debugPrint('[SOS] start failed: ${response.body}');
@@ -215,11 +237,13 @@ class ApiService {
   static Future<bool> cancelSOS(String sosId) async {
     try {
       final headers = await authHeaders();
-      final response = await http.post(
-        Uri.parse('$baseUrl/sos/cancel'),
-        headers: headers,
-        body: jsonEncode({'sosId': sosId}),
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/sos/cancel'),
+            headers: headers,
+            body: jsonEncode({'sosId': sosId}),
+          )
+          .timeout(const Duration(seconds: 10));
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -229,10 +253,12 @@ class ApiService {
   static Future<Map<String, dynamic>?> getSOSStatus(String sosId) async {
     try {
       final headers = await authHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/sos/$sosId'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/sos/$sosId'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode == 200) return jsonDecode(response.body);
     } catch (e) {
       debugPrint('[SOS] getSOSStatus error: $e');
@@ -248,11 +274,14 @@ class ApiService {
   }) async {
     try {
       final headers = await authHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/services/nearby?lat=$lat&lon=$lon&radius=$radius'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 25));
-      
+      final response = await http
+          .get(
+            Uri.parse(
+                '$baseUrl/api/services/nearby?lat=$lat&lon=$lon&radius=$radius'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 25));
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success']) {
@@ -263,7 +292,7 @@ class ApiService {
       debugPrint('[SERVICES] error: $e');
     }
     return {
-      'success': false, 
+      'success': false,
       'counts': {'hospitals': 0, 'police': 0},
       'services': {'hospitals': [], 'police': []}
     };
@@ -279,10 +308,13 @@ class ApiService {
   }) async {
     try {
       final headers = await authHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/services/bbox?south=$south&west=$west&north=$north&east=$east&type=$type'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 25));
+      final response = await http
+          .get(
+            Uri.parse(
+                '$baseUrl/api/services/bbox?south=$south&west=$west&north=$north&east=$east&type=$type'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 25));
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
@@ -298,18 +330,22 @@ class ApiService {
     try {
       final headers = await authHeaders();
       final encoded = Uri.encodeComponent(query);
-      final response = await http.get(
-        Uri.parse('$baseUrl/places/search?q=$encoded'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/places/search?q=$encoded'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final List<dynamic> results = jsonDecode(response.body);
-        return results.map((r) => {
-          'displayName': r['displayName'] as String,
-          'lat':  (r['lat'] as num).toDouble(),
-          'lng':  (r['lng'] as num).toDouble(),
-        }).toList();
+        return results
+            .map((r) => {
+                  'displayName': r['displayName'] as String,
+                  'lat': (r['lat'] as num).toDouble(),
+                  'lng': (r['lng'] as num).toDouble(),
+                })
+            .toList();
       }
     } catch (e) {
       debugPrint('[GEOCODE] error: $e');
@@ -323,11 +359,13 @@ class ApiService {
   ) async {
     try {
       final headers = await authHeaders();
-      await http.post(
-        Uri.parse('$baseUrl/auth/emergency-contacts'),
-        headers: headers,
-        body: jsonEncode({'contacts': contacts}),
-      ).timeout(const Duration(seconds: 10));
+      await http
+          .post(
+            Uri.parse('$baseUrl/api/auth/emergency-contacts'),
+            headers: headers,
+            body: jsonEncode({'contacts': contacts}),
+          )
+          .timeout(const Duration(seconds: 10));
     } catch (e) {
       debugPrint('[API] syncContacts failed: $e');
     }
@@ -338,7 +376,7 @@ class ApiService {
     try {
       final headers = await authHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/circle/create'),
+        Uri.parse('$baseUrl/api/circle/create'),
         headers: headers,
         body: jsonEncode({'name': name}),
       );
@@ -352,7 +390,7 @@ class ApiService {
     try {
       final headers = await authHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/circle/join'),
+        Uri.parse('$baseUrl/api/circle/join'),
         headers: headers,
         body: jsonEncode({'inviteCode': inviteCode}),
       );
@@ -366,7 +404,7 @@ class ApiService {
     try {
       final headers = await authHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/circle/my'),
+        Uri.parse('$baseUrl/api/circle/my'),
         headers: headers,
       );
       return jsonDecode(response.body);

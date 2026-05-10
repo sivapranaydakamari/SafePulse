@@ -44,8 +44,10 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open WhatsApp')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open WhatsApp')));
+      }
     }
   }
 
@@ -60,8 +62,10 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open dialer')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open dialer')));
+      }
     }
   }
 
@@ -97,8 +101,10 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
     final String phone = widget.memberData['phone'] ?? '';
     final String lastSeen = _formatLastSeen(widget.memberData['lastSeen']);
 
-    final loc = widget.memberData['lastLocation'] ?? widget.memberData['location'];
-    final bool hasLocation = loc != null && loc['lat'] != null && loc['lng'] != null;
+    final loc =
+        widget.memberData['lastLocation'] ?? widget.memberData['location'];
+    final bool hasLocation =
+        loc != null && loc['lat'] != null && loc['lng'] != null;
     final String locationText = hasLocation
         ? '${(loc['lat'] as num).toStringAsFixed(5)}, ${(loc['lng'] as num).toStringAsFixed(5)}'
         : 'Location not shared';
@@ -119,7 +125,8 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(name,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.map, color: AppColors.primary),
@@ -127,7 +134,8 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
             onPressed: () => Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (_) => CircleMapPage(circleId: widget.circleId, circleName: widget.circleName),
+                builder: (_) => CircleMapPage(
+                    circleId: widget.circleId, circleName: widget.circleName),
               ),
             ),
           ),
@@ -145,10 +153,14 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
                   CircleAvatar(
                     radius: 48,
                     backgroundColor: AppColors.surface,
-                    backgroundImage: profilePic != null ? NetworkImage(profilePic) : null,
+                    backgroundImage:
+                        profilePic != null ? NetworkImage(profilePic) : null,
                     child: profilePic == null
                         ? Text(name[0].toUpperCase(),
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 36))
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 36))
                         : null,
                   ),
                   Container(
@@ -156,21 +168,27 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
                     decoration: BoxDecoration(
                         color: isDriving ? AppColors.primary : AppColors.safe,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.background, width: 2)),
+                        border:
+                            Border.all(color: AppColors.background, width: 2)),
                     child: Icon(isDriving ? Icons.directions_car : Icons.check,
                         color: Colors.white, size: 14),
                   ),
                 ]),
                 const SizedBox(height: 12),
                 Text(name,
-                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Text(isDriving ? 'Currently Driving' : 'Active',
                     style: TextStyle(
-                        color: isDriving ? AppColors.primary : AppColors.safe, fontSize: 14)),
+                        color: isDriving ? AppColors.primary : AppColors.safe,
+                        fontSize: 14)),
                 const SizedBox(height: 4),
                 Text('Last seen: $lastSeen',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    style: const TextStyle(
+                        color: AppColors.textSecondary, fontSize: 12)),
               ]),
             ),
 
@@ -191,11 +209,15 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatusCard(
-                  icon: isDriving ? Icons.directions_car : Icons.directions_car_outlined,
-                  iconColor: isDriving ? AppColors.primary : AppColors.textSecondary,
+                  icon: isDriving
+                      ? Icons.directions_car
+                      : Icons.directions_car_outlined,
+                  iconColor:
+                      isDriving ? AppColors.primary : AppColors.textSecondary,
                   label: 'Driving',
                   value: isDriving ? '$speed km/h' : 'Not driving',
-                  valueColor: isDriving ? AppColors.primary : AppColors.textSecondary,
+                  valueColor:
+                      isDriving ? AppColors.primary : AppColors.textSecondary,
                   subtitle: isDriving ? 'In motion' : 'Stationary',
                 ),
               ),
@@ -211,10 +233,14 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
               content: locationText,
               trailing: hasLocation
                   ? TextButton(
-                      onPressed: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) =>
-                              CircleMapPage(circleId: widget.circleId, circleName: widget.circleName))),
-                      child: const Text('View on map', style: TextStyle(color: AppColors.primary)))
+                      onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => CircleMapPage(
+                                  circleId: widget.circleId,
+                                  circleName: widget.circleName))),
+                      child: const Text('View on map',
+                          style: TextStyle(color: AppColors.primary)))
                   : null,
             ),
 
@@ -228,7 +254,8 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
               content: phone.isNotEmpty ? phone : 'Not available',
               trailing: phone.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.call, color: AppColors.safe, size: 20),
+                      icon: const Icon(Icons.call,
+                          color: AppColors.safe, size: 20),
                       onPressed: () => _callPhone(phone),
                     )
                   : null,
@@ -238,20 +265,28 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
 
             // ── Action buttons ──────────────────────────────────────────────
             const Text('Quick Actions',
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
 
             Row(children: [
-              Expanded(child: _buildActionButton(
+              Expanded(
+                  child: _buildActionButton(
                 icon: Icons.map_outlined,
                 label: 'Open Map',
                 color: AppColors.primary,
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) =>
-                        CircleMapPage(circleId: widget.circleId, circleName: widget.circleName))),
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => CircleMapPage(
+                            circleId: widget.circleId,
+                            circleName: widget.circleName))),
               )),
               const SizedBox(width: 12),
-              Expanded(child: _buildActionButton(
+              Expanded(
+                  child: _buildActionButton(
                 icon: Icons.message,
                 label: 'WhatsApp',
                 color: const Color(0xFF25D366),
@@ -279,13 +314,15 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () => _sendCheckInMessage(name, phone),
-                icon: const Icon(Icons.health_and_safety_outlined, color: Colors.orangeAccent),
+                icon: const Icon(Icons.health_and_safety_outlined,
+                    color: Colors.orangeAccent),
                 label: Text('Check on ${name.split(' ').first}',
                     style: const TextStyle(color: Colors.orangeAccent)),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.orangeAccent),
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
               ),
             ),
@@ -303,13 +340,16 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
     }
     final cleaned = phone.replaceAll(RegExp(r'[^\d+]'), '');
     final waNumber = cleaned.startsWith('+') ? cleaned.substring(1) : cleaned;
-    final message = Uri.encodeComponent('Hey ${name.split(' ').first}, just checking in on you! Are you okay? 😊');
+    final message = Uri.encodeComponent(
+        'Hey ${name.split(' ').first}, just checking in on you! Are you okay? 😊');
     final uri = Uri.parse('https://wa.me/$waNumber?text=$message');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open WhatsApp')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open WhatsApp')));
+      }
     }
   }
 
@@ -332,11 +372,17 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(icon, color: iconColor, size: 22),
         const SizedBox(height: 8),
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        Text(label,
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(color: valueColor, fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(value,
+            style: TextStyle(
+                color: valueColor, fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 2),
-        Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+        Text(subtitle,
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
       ]),
     );
   }
@@ -358,15 +404,23 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, color: iconColor, size: 20),
         ),
         const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title,
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 12)),
           const SizedBox(height: 2),
           Text(content,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500)),
+              style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500)),
         ])),
         if (trailing != null) trailing,
       ]),
@@ -391,7 +445,9 @@ class _MemberDetailPageState extends State<MemberDetailPage> {
         child: Column(children: [
           Icon(icon, color: color, size: 24),
           const SizedBox(height: 6),
-          Text(label, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w500)),
+          Text(label,
+              style: TextStyle(
+                  color: color, fontSize: 13, fontWeight: FontWeight.w500)),
         ]),
       ),
     );

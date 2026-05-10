@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:animate_do/animate_do.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/services/api_service.dart';
 
 class SOSActivePage extends StatefulWidget {
   final String sosId;
   final LatLng initialLocation;
 
-  const SOSActivePage({super.key, required this.sosId, required this.initialLocation});
+  const SOSActivePage(
+      {super.key, required this.sosId, required this.initialLocation});
 
   @override
   State<SOSActivePage> createState() => _SOSActivePageState();
@@ -30,7 +30,8 @@ class _SOSActivePageState extends State<SOSActivePage> {
     super.initState();
     _fetchSOSStatus();
     _fetchNearbyServices();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) => _fetchSOSStatus());
+    _refreshTimer =
+        Timer.periodic(const Duration(seconds: 10), (_) => _fetchSOSStatus());
   }
 
   @override
@@ -43,7 +44,7 @@ class _SOSActivePageState extends State<SOSActivePage> {
     final data = await ApiService.getSOSStatus(widget.sosId);
     if (data != null && mounted) {
       setState(() {
-        _sosData   = data;
+        _sosData = data;
         _isLoading = false;
       });
     }
@@ -56,7 +57,8 @@ class _SOSActivePageState extends State<SOSActivePage> {
     );
     if (mounted) {
       setState(() {
-        _nearbyServices = List<Map<String, dynamic>>.from(data['services'] ?? []);
+        _nearbyServices =
+            List<Map<String, dynamic>>.from(data['services'] ?? []);
       });
     }
   }
@@ -81,7 +83,8 @@ class _SOSActivePageState extends State<SOSActivePage> {
       // Victim location — pulsing red
       Marker(
         point: widget.initialLocation,
-        width: 60, height: 60,
+        width: 60,
+        height: 60,
         child: Pulse(
           infinite: true,
           child: const Icon(Icons.location_on, color: Colors.red, size: 46),
@@ -93,7 +96,8 @@ class _SOSActivePageState extends State<SOSActivePage> {
     for (final s in _nearbyServices) {
       markers.add(Marker(
         point: LatLng(s['lat'], s['lon']),
-        width: 40, height: 40,
+        width: 40,
+        height: 40,
         child: Tooltip(
           message: '${s['name']} (${s['distanceMeters']}m)',
           child: Icon(
@@ -110,9 +114,10 @@ class _SOSActivePageState extends State<SOSActivePage> {
 
   @override
   Widget build(BuildContext context) {
-    final contactsCount   = (_sosData?['contactsNotified']  as List?)?.length ?? 0;
-    final nearbyCount     = (_sosData?['nearbyUsersNotified'] as List?)?.length ?? 0;
-    final respondersCount = (_sosData?['responders']          as List?)?.length ?? 0;
+    final contactsCount = (_sosData?['contactsNotified'] as List?)?.length ?? 0;
+    final nearbyCount =
+        (_sosData?['nearbyUsersNotified'] as List?)?.length ?? 0;
+    final respondersCount = (_sosData?['responders'] as List?)?.length ?? 0;
 
     return Scaffold(
       backgroundColor: Colors.red.shade900,
@@ -145,25 +150,36 @@ class _SOSActivePageState extends State<SOSActivePage> {
                     decoration: BoxDecoration(
                       color: Colors.red.shade700,
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 16)],
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black45, blurRadius: 16)
+                      ],
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 36),
+                        const Icon(Icons.warning_amber_rounded,
+                            color: Colors.white, size: 36),
                         const SizedBox(width: 14),
                         const Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('SOS ACTIVE',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 22)),
                               Text('Contacts & nearby users notified',
-                                  style: TextStyle(color: Colors.white70, fontSize: 12)),
+                                  style: TextStyle(
+                                      color: Colors.white70, fontSize: 12)),
                             ],
                           ),
                         ),
                         if (_isLoading)
-                          const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+                          const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2)),
                       ],
                     ),
                   ),
@@ -176,11 +192,14 @@ class _SOSActivePageState extends State<SOSActivePage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       children: [
-                        _statCard('Contacts\nNotified', contactsCount, Colors.orange),
+                        _statCard(
+                            'Contacts\nNotified', contactsCount, Colors.orange),
                         const SizedBox(width: 10),
-                        _statCard('Nearby\nAlerted', nearbyCount, Colors.yellow),
+                        _statCard(
+                            'Nearby\nAlerted', nearbyCount, Colors.yellow),
                         const SizedBox(width: 10),
-                        _statCard('Active\nResponders', respondersCount, Colors.green),
+                        _statCard('Active\nResponders', respondersCount,
+                            Colors.green),
                       ],
                     ),
                   ),
@@ -191,7 +210,8 @@ class _SOSActivePageState extends State<SOSActivePage> {
                   FadeInUp(
                     delay: const Duration(milliseconds: 400),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
@@ -199,9 +219,13 @@ class _SOSActivePageState extends State<SOSActivePage> {
                             return Padding(
                               padding: const EdgeInsets.only(right: 8.0),
                               child: _serviceChip(
-                                s['type'] == 'hospital' ? Icons.local_hospital : Icons.local_police,
+                                s['type'] == 'hospital'
+                                    ? Icons.local_hospital
+                                    : Icons.local_police,
                                 '${s['name']} - ${_fmtDist(s['distanceMeters'].toDouble())}',
-                                s['type'] == 'hospital' ? Colors.blue : Colors.indigo,
+                                s['type'] == 'hospital'
+                                    ? Colors.blue
+                                    : Colors.indigo,
                               ),
                             );
                           }).toList(),
@@ -220,14 +244,19 @@ class _SOSActivePageState extends State<SOSActivePage> {
                     child: ElevatedButton.icon(
                       onPressed: _isCancelling ? null : _cancelSOS,
                       icon: _isCancelling
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.cancel),
                       label: const Text('Cancel SOS'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.red.shade700,
                         minimumSize: const Size(double.infinity, 52),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
                   ),
@@ -250,10 +279,14 @@ class _SOSActivePageState extends State<SOSActivePage> {
         ),
         child: Column(
           children: [
-            Text('$value', style: TextStyle(color: color, fontSize: 28, fontWeight: FontWeight.bold)),
+            Text('$value',
+                style: TextStyle(
+                    color: color, fontSize: 28, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text(label, textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white70, fontSize: 10, height: 1.3)),
+            Text(label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.white70, fontSize: 10, height: 1.3)),
           ],
         ),
       ),
@@ -273,7 +306,9 @@ class _SOSActivePageState extends State<SOSActivePage> {
         children: [
           Icon(icon, color: color, size: 14),
           const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(label,
+              style: TextStyle(
+                  color: color, fontSize: 12, fontWeight: FontWeight.w600)),
         ],
       ),
     );
