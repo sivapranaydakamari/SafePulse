@@ -48,7 +48,7 @@ class _SOSHubPageState extends State<SOSHubPage>
   final MapController _mapController = MapController();
 
   Future<void> _updateNearbyServices() async {
-    if (_isLoadingServices) return;
+    if (!mounted || _isLoadingServices) return;
     setState(() => _isLoadingServices = true);
 
     try {
