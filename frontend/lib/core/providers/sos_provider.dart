@@ -75,7 +75,7 @@ class SOSProvider extends ChangeNotifier {
   Future<void> refreshSOSStatus() async {
     if (_activeSos == null) return;
     try {
-      final updated = await _repo.getSOSStatus(_activeSos!.id);
+      final updated = await _repo.getStatus(_activeSos!.id);
       if (updated != null) {
         _activeSos = updated;
         notifyListeners();

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import '../services/ai_service.dart';
 import '../services/alert_service.dart';
-import '../../../core/services/api_service.dart';
+import '../../../core/repositories/sos_repository.dart';
 import '../../../core/services/location_service.dart';
 import '../services/sensor_service.dart';
 import '../services/sos_service.dart';
@@ -34,8 +34,8 @@ class SafePulseEngine {
   final LocationService locationService = LocationService();
   final AlertService alertService = AlertService();
   late final WarningService warningService;
-  final SosService sosService = SosService();
-  final ApiService apiService = ApiService();
+  late final SosService sosService;
+  final SOSRepository sosRepository = SOSRepository();
 
   // Streams
   final logStream = StreamController<LogMessage>.broadcast();
@@ -114,6 +114,7 @@ class SafePulseEngine {
 
   void _initializeServices() {
     warningService = WarningService(alertService);
+    sosService = SosService(sosRepository);
 
     // Bind loggers
     aiService.onLog = (msg) => log(msg, level: LogLevel.info);
@@ -224,7 +225,6 @@ class SafePulseEngine {
 
     final now = DateTime.now();
 
-    // Calculate clamping & dynamic timeout
     final avgGapMs = sensorService.avgGapMs;
     final dynamicTimeoutSeconds = (avgGapMs * 10 / 1000).toInt();
     final timeout = dynamicTimeoutSeconds.clamp(5, 25);
@@ -254,7 +254,6 @@ class SafePulseEngine {
     }
 
     if (healthState == EngineHealthState.degraded) {
-      // Self-healing attempt
       if (_degradedRecoveryAttempts < 5) {
         _degradedRecoveryAttempts++;
         log(
@@ -265,7 +264,6 @@ class SafePulseEngine {
       return;
     }
 
-    // Cooldown check
     if (_lastRecoveryTime != null &&
         now.difference(_lastRecoveryTime!).inSeconds < 20) {
       return;
@@ -316,7 +314,6 @@ class SafePulseEngine {
           "Watchdog: Recovery limit exceeded. Entering Degraded Mode.",
           level: LogLevel.critical,
         );
-        // autonomous AI triggers are blocked in onRawData if degraded
       }
     }
   }
@@ -356,7 +353,6 @@ class SafePulseEngine {
       double lat = position?.latitude ?? 0.0;
       double lng = position?.longitude ?? 0.0;
 
-      // Use Hybrid SOS (Online first, then Fallback)
       log("Initiating Hybrid SOS Protocol...", level: LogLevel.critical);
       double currentSpeed = locationService.currentSpeedMs ?? 0.0;
       await sosService.triggerHybridSOS(

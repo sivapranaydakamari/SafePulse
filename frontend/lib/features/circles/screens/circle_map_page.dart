@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -8,8 +7,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:battery_plus/battery_plus.dart';
-import 'package:http/http.dart' as http;
-import '../../../core/services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../../../core/repositories/circle_repository.dart';
+import '../../../core/repositories/user_repository.dart';
 import '../../../core/theme/app_colors.dart';
 
 class CircleMapPage extends StatefulWidget {
@@ -28,7 +28,7 @@ class CircleMapPage extends StatefulWidget {
 
 class _CircleMapPageState extends State<CircleMapPage> {
   final MapController _mapController = MapController();
-  final Battery _battery = Battery(); // ← device battery
+  final Battery _battery = Battery();
 
   LatLng? _myLocation;
   bool _isLoading = true;
@@ -36,19 +36,20 @@ class _CircleMapPageState extends State<CircleMapPage> {
   List<Map<String, dynamic>> _members = [];
   Timer? _locationTimer;
   Timer? _fetchMembersTimer;
-  String? _authToken;
   int _selectedMemberIndex = -1;
+
+  late CircleRepository _circleRepo;
+  late UserRepository _userRepo;
 
   @override
   void initState() {
     super.initState();
+    _circleRepo = context.read<CircleRepository>();
+    _userRepo = context.read<UserRepository>();
     _init();
   }
 
   Future<void> _init() async {
-    final prefs = await SharedPreferences.getInstance();
-    _authToken = prefs.getString('auth_token'); // same key as api_service.dart
-
     await _getUserLocation();
     await _fetchMembers();
 
@@ -77,23 +78,17 @@ class _CircleMapPageState extends State<CircleMapPage> {
   }
 
   Future<void> _updateMyLocationOnServer() async {
-    if (_authToken == null) return;
     try {
       final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
       if (mounted) setState(() => _myLocation = LatLng(pos.latitude, pos.longitude));
 
-      // ===== FIX: Get real device battery =====
       int batteryLevel = 100;
       try { batteryLevel = await _battery.batteryLevel; } catch (_) {}
 
-      await http.put(
-        Uri.parse('${ApiService.baseUrl}/circle/update-location'),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $_authToken'},
-        body: jsonEncode({
-          'lat': pos.latitude,
-          'lng': pos.longitude,
-          'batteryLevel': batteryLevel, // ← real battery
-        }),
+      await _circleRepo.updateMemberLocation(
+        lat: pos.latitude,
+        lng: pos.longitude,
+        batteryLevel: batteryLevel,
       );
       debugPrint('[MAP] Location + battery($batteryLevel%) updated');
     } catch (e) {
@@ -102,18 +97,10 @@ class _CircleMapPageState extends State<CircleMapPage> {
   }
 
   Future<void> _fetchMembers() async {
-    if (_authToken == null) return;
     try {
-      final res = await http.get(
-        Uri.parse('${ApiService.baseUrl}/circle/${widget.circleId}/members-location'),
-        headers: {'Authorization': 'Bearer $_authToken', 'Content-Type': 'application/json'},
-      );
-      debugPrint('[MAP] Members fetch: ${res.statusCode}');
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        if (data['success'] == true && mounted) {
-          setState(() => _members = List<Map<String, dynamic>>.from(data['members'] ?? []));
-        }
+      final members = await _circleRepo.getCircleMemberLocations(widget.circleId);
+      if (mounted) {
+        setState(() => _members = members);
       }
     } catch (e) {
       debugPrint('[MAP] Fetch members error: $e');
@@ -234,15 +221,11 @@ class _CircleMapPageState extends State<CircleMapPage> {
                       MarkerLayer(markers: _buildAllMarkers()),
                     ],
                   ),
-
-                  // Member info card on pin tap
                   if (_selectedMemberIndex >= 0 && _selectedMemberIndex < _members.length)
                     Positioned(
                       top: 16, left: 16, right: 16,
                       child: _buildMemberInfoCard(_members[_selectedMemberIndex]),
                     ),
-
-                  // Bottom strip
                   Positioned(bottom: 0, left: 0, right: 0, child: _buildBottomStrip()),
                 ]),
     );
@@ -423,7 +406,6 @@ class _CircleMapPageState extends State<CircleMapPage> {
           const Divider(color: AppColors.surface, height: 1),
           const SizedBox(height: 10),
           Row(children: [
-            // Battery
             Row(children: [
               Icon(batteryNum <= 20 ? Icons.battery_alert : batteryNum <= 50 ? Icons.battery_3_bar : Icons.battery_full,
                   size: 14, color: batteryColor),
@@ -438,7 +420,6 @@ class _CircleMapPageState extends State<CircleMapPage> {
                 overflow: TextOverflow.ellipsis,
               )),
             const Spacer(),
-            // WhatsApp button
             GestureDetector(
               onTap: () => _openWhatsApp(phone),
               child: Container(
@@ -492,8 +473,6 @@ class _CircleMapPageState extends State<CircleMapPage> {
     );
   }
 }
-
-// ── AVATAR MARKER ─────────────────────────────────────────────────────────────
 
 class _AvatarMarker extends StatelessWidget {
   final String label;

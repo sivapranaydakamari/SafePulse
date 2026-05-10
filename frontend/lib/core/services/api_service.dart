@@ -32,7 +32,7 @@ class ApiService {
           'lon': lon,
           'speedLimit': limit
         }),
-      );
+      )
     } catch (e, stack) {
       AppError.log('ApiService.sendSpeedAlert', e, stack);
     }
