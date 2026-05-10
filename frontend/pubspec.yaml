@@ -59,4 +59,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/crash_model.tflite
+    - assets/crash_model.tflite

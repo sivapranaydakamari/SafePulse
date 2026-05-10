@@ -12,7 +12,6 @@ import '../../../core/services/location_service.dart';
 import '../../../core/repositories/user_repository.dart';
 import '../../../core/theme/app_colors.dart';
 
-import '../screens/places_page.dart';
 import '../../profile/screens/settings_page.dart';
 import '../../circles/screens/circle_page.dart';
 import '../../sos/screens/sos_hub_page.dart';
@@ -36,12 +35,10 @@ class _HomePageState extends State<HomePage> {
       case 0:
         return const HomeContentView();
       case 1:
-        return const PlacesPage();
-      case 2:
         return const SOSHubPage();
-      case 3:
+      case 2:
         return const CirclePage();
-      case 4:
+      case 3:
         return const SettingsPage();
       default:
         return const HomeContentView();
@@ -63,7 +60,6 @@ class _HomePageState extends State<HomePage> {
         elevation: 10,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.location_on_outlined), activeIcon: Icon(Icons.location_on), label: 'Places'),
           BottomNavigationBarItem(icon: Icon(Icons.emergency_outlined), activeIcon: Icon(Icons.emergency), label: 'SOS'),
           BottomNavigationBarItem(icon: Icon(Icons.group_outlined), activeIcon: Icon(Icons.group), label: 'Circles'),
           BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), activeIcon: Icon(Icons.settings), label: 'Settings'),

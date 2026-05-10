@@ -1,6 +1,24 @@
 class AppConfig {
+  // For local development (Android Emulator):
+  // static const String _localUrl = 'http://10.0.2.2:5001';
+  
+  // For local development (iOS Simulator):
+  // static const String _localUrl = 'http://localhost:5001';
+  
+  // For real device on same network:
+  static const String _localUrl = 'http://10.212.213.130:5001';
+  // (Replace with your computer's local IP if it changes)
+  
+  // For production (deployed backend):
+  // static const String _localUrl = 'http://YOUR_SERVER_IP:5001';
+  
+
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
-    defaultValue: 'http://10.212.213.130:5000', 
+    defaultValue: _localUrl, 
   );
+
+  static const String routeSuggestEndpoint = '/api/routes/suggest';
+  static String get routeSuggestUrl => '$baseUrl$routeSuggestEndpoint';
+
 }
