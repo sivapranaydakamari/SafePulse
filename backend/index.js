@@ -2,11 +2,16 @@ const express   = require('express');
 const mongoose  = require('mongoose');
 const cors      = require('cors');
 const dotenv    = require('dotenv');
+const http      = require('http');
+const { createRealtimeHub } = require('./services/realtime_hub');
 
 dotenv.config();
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
+const server = http.createServer(app);
+const realtimeHub = createRealtimeHub(server);
+app.set('realtimeHub', realtimeHub);
 
 app.use(cors());
 app.use(express.json());
@@ -46,12 +51,15 @@ app.use('/api/places',   require('./routes/places')); // ← NEW: India-focused 
 app.use('/api/services', require('./routes/services'));
 app.use('/api/alerts',   require('./routes/alerts'));
 app.use('/api/overpass', require('./routes/overpass'));
+app.use('/api/risk-zones', require('./routes/risk_zones'));
+app.use('/api/ai',       require('./routes/ai'));
 
 app.get('/', (req, res) => res.send('SafePulse API v2 running'));
 
 // Bind to 0.0.0.0 so physical devices on the LAN can connect
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ SafePulse API listening on 0.0.0.0:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`SafePulse API listening on 0.0.0.0:${PORT}`);
+  console.log(`SafePulse realtime WebSocket ready at ws://0.0.0.0:${PORT}/ws/tracking`);
 }).on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     console.error(`❌ Port ${PORT} is already in use. Kill the other process first:`);

@@ -213,6 +213,31 @@ class ApiService {
   }
 
   // SOS — FIXED: correct endpoint is /sos/start, not /circle/trigger-sos
+  static Future<Map<String, dynamic>> analyzeAccidentWindow({
+    required List<Map<String, dynamic>> samples,
+    String? tripId,
+    List<String> circleMemberIds = const [],
+  }) async {
+    try {
+      final headers = await authHeaders();
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/api/ai/accident/analyze'),
+            headers: headers,
+            body: jsonEncode({
+              'samples': samples,
+              if (tripId != null) 'tripId': tripId,
+              'circleMemberIds': circleMemberIds,
+            }),
+          )
+          .timeout(const Duration(seconds: 6));
+      return jsonDecode(response.body);
+    } catch (e) {
+      debugPrint('[AI] analyzeAccidentWindow error: $e');
+      return {'success': false, 'message': 'AI service unavailable'};
+    }
+  }
+
   static Future<Map<String, dynamic>?> startSOS({
     required double lat,
     required double lng,
