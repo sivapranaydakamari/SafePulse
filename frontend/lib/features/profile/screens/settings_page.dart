@@ -225,6 +225,116 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Future<void> _showPrivacyPermissions() async {
+    final locationStatus = await Permission.location.status;
+    final notificationStatus = await Permission.notification.status;
+    final contactsStatus = await Permission.contacts.status;
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Privacy & Permissions',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            _buildPermissionRow('Location', locationStatus),
+            _buildPermissionRow('Notifications', notificationStatus),
+            _buildPermissionRow('Contacts', contactsStatus),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                onPressed: () {
+                  Navigator.pop(context);
+                  openAppSettings();
+                },
+                child: const Text('Open System Settings'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPermissionRow(String title, PermissionStatus status) {
+    bool isGranted = status.isGranted;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(color: Colors.white, fontSize: 16)),
+          Text(
+            isGranted ? 'Granted' : 'Denied',
+            style: TextStyle(
+              color: isGranted ? AppColors.primary : AppColors.risk,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHelpCenter() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Help Center',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            _buildFaqItem('How does crash detection work?', 'We use your phone sensors to detect sudden impacts.'),
+            _buildFaqItem('How do I add emergency contacts?', 'Go to Safety Settings > SOS Emergency Contacts.'),
+            const SizedBox(height: 16),
+            const Text('Need more help?', style: TextStyle(color: Colors.white, fontSize: 16)),
+            const SizedBox(height: 8),
+            const Text('Contact us at support@safepulse.app', style: TextStyle(color: AppColors.primary)),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFaqItem(String question, String answer) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(question, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(answer, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     bool isMonitoring = engineState == EngineState.monitoring;
@@ -366,7 +476,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   'Edit your profile',
                   onTap: _editProfile),
               _buildTile(Icons.privacy_tip_outlined, 'Privacy & Permissions',
-                  'Location and data sharing'),
+                  'Location and data sharing', onTap: _showPrivacyPermissions),
               _buildSwitch(
                 icon: Icons.notifications_none_rounded,
                 title: 'Notifications',
@@ -381,7 +491,7 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 24),
 
             _buildSection('Support', [
-              _buildTile(Icons.help_outline, 'Help Center', 'FAQs and guides'),
+              _buildTile(Icons.help_outline, 'Help Center', 'FAQs and guides', onTap: _showHelpCenter),
               _buildTile(
                   Icons.info_outline, 'About SafePulse', 'Version 2.0.0'),
             ]),
