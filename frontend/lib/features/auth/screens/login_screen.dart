@@ -1,8 +1,9 @@
+// MOVED FROM: lib/features/auth/screens/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
-import '../../../core/services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
-
 import 'otp_screen.dart';
 import 'email_login_screen.dart';
 
@@ -15,7 +16,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _phoneController = TextEditingController();
-  // Fixed country code for India
   final String _selectedCountryCode = "+91";
   bool _isLoading = false;
   String? _errorMessage;
@@ -24,8 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final phone = _phoneController.text.trim();
 
     if (phone.isEmpty) {
-      setState(
-          () => _errorMessage = "Please enter your 10-digit mobile number");
+      setState(() => _errorMessage = "Please enter your 10-digit mobile number");
       return;
     }
 
@@ -40,9 +39,10 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     final fullPhoneNumber = "$_selectedCountryCode$phone";
-
-    // Call backend API to send real OTP via Twilio
-    final result = await ApiService.sendOtp(fullPhoneNumber);
+    final authProvider = context.read<AuthProvider>();
+    
+    // Use AuthProvider instead of direct ApiService call
+    final result = await authProvider.sendOtp(fullPhoneNumber);
 
     if (mounted) {
       setState(() => _isLoading = false);
@@ -80,11 +80,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Text(
                       "Welcome Back",
-                      style:
-                          Theme.of(context).textTheme.headlineLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                              ),
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -105,8 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: AppColors.surface),
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     children: [
                       Text(
@@ -137,8 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           decoration: const InputDecoration(
                             border: InputBorder.none,
                             hintText: "Phone Number",
-                            hintStyle:
-                                TextStyle(color: AppColors.textSecondary),
+                            hintStyle: TextStyle(color: AppColors.textSecondary),
                           ),
                         ),
                       ),
@@ -195,8 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const EmailLoginScreen()),
+                      MaterialPageRoute(builder: (_) => const EmailLoginScreen()),
                     );
                   },
                   style: OutlinedButton.styleFrom(
@@ -209,8 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.email_outlined,
-                          color: AppColors.textPrimary),
+                      const Icon(Icons.email_outlined, color: AppColors.textPrimary),
                       const SizedBox(width: 12),
                       Text(
                         "Continue with Email",

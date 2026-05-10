@@ -3,14 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:animate_do/animate_do.dart';
-import '../../../core/services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../../../core/providers/sos_provider.dart';
+import '../../../core/theme/app_colors.dart';
 
 class SOSActivePage extends StatefulWidget {
   final String sosId;
   final LatLng initialLocation;
 
-  const SOSActivePage(
-      {super.key, required this.sosId, required this.initialLocation});
+  const SOSActivePage({
+    super.key, 
+    required this.sosId, 
+    required this.initialLocation,
+  });
 
   @override
   State<SOSActivePage> createState() => _SOSActivePageState();
@@ -18,20 +23,13 @@ class SOSActivePage extends StatefulWidget {
 
 class _SOSActivePageState extends State<SOSActivePage> {
   Timer? _refreshTimer;
-  Map<String, dynamic>? _sosData;
-  bool _isLoading = true;
   bool _isCancelling = false;
-
-  // FIXED: real nearby services fetched from Services API
-  List<Map<String, dynamic>> _nearbyServices = [];
 
   @override
   void initState() {
     super.initState();
-    _fetchSOSStatus();
-    _fetchNearbyServices();
-    _refreshTimer =
-        Timer.periodic(const Duration(seconds: 10), (_) => _fetchSOSStatus());
+    _loadInitialData();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) => _refreshData());
   }
 
   @override
@@ -40,34 +38,25 @@ class _SOSActivePageState extends State<SOSActivePage> {
     super.dispose();
   }
 
-  Future<void> _fetchSOSStatus() async {
-    final data = await ApiService.getSOSStatus(widget.sosId);
-    if (data != null && mounted) {
-      setState(() {
-        _sosData = data;
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _fetchNearbyServices() async {
-    final data = await ApiService.getNearbyServices(
+  Future<void> _loadInitialData() async {
+    final provider = context.read<SOSProvider>();
+    await provider.refreshSOSStatus();
+    await provider.loadNearbyServices(
       lat: widget.initialLocation.latitude,
       lon: widget.initialLocation.longitude,
     );
-    if (mounted) {
-      setState(() {
-        _nearbyServices =
-            List<Map<String, dynamic>>.from(data['services'] ?? []);
-      });
-    }
+  }
+
+  Future<void> _refreshData() async {
+    await context.read<SOSProvider>().refreshSOSStatus();
   }
 
   Future<void> _cancelSOS() async {
     setState(() => _isCancelling = true);
-    final ok = await ApiService.cancelSOS(widget.sosId);
+    final provider = context.read<SOSProvider>();
+    await provider.cancelSOS();
     if (mounted) {
-      if (ok) {
+      if (provider.status == SOSStatus.cancelled) {
         Navigator.pop(context);
       } else {
         setState(() => _isCancelling = false);
@@ -78,9 +67,8 @@ class _SOSActivePageState extends State<SOSActivePage> {
     }
   }
 
-  List<Marker> _buildMapMarkers() {
+  List<Marker> _buildMapMarkers(SOSProvider provider) {
     final markers = <Marker>[
-      // Victim location — pulsing red
       Marker(
         point: widget.initialLocation,
         width: 60,
@@ -92,8 +80,8 @@ class _SOSActivePageState extends State<SOSActivePage> {
       ),
     ];
 
-    // Dynamic services markers
-    for (final s in _nearbyServices) {
+    final services = provider.nearbyData?['services'] as List? ?? [];
+    for (final s in services) {
       markers.add(Marker(
         point: LatLng(s['lat'], s['lon']),
         width: 40,
@@ -114,16 +102,19 @@ class _SOSActivePageState extends State<SOSActivePage> {
 
   @override
   Widget build(BuildContext context) {
-    final contactsCount = (_sosData?['contactsNotified'] as List?)?.length ?? 0;
-    final nearbyCount =
-        (_sosData?['nearbyUsersNotified'] as List?)?.length ?? 0;
-    final respondersCount = (_sosData?['responders'] as List?)?.length ?? 0;
+    final provider = context.watch<SOSProvider>();
+    final sos = provider.activeSos;
+    
+    final contactsCount = sos?.contactsNotified.length ?? 0;
+    final nearbyCount = sos?.nearbyUsersNotified.length ?? 0;
+    final respondersCount = sos?.responders.length ?? 0;
+    
+    final services = provider.nearbyData?['services'] as List? ?? [];
 
     return Scaffold(
       backgroundColor: Colors.red.shade900,
       body: Stack(
         children: [
-          // Map (bottom layer)
           FlutterMap(
             options: MapOptions(
               initialCenter: widget.initialLocation,
@@ -134,15 +125,13 @@ class _SOSActivePageState extends State<SOSActivePage> {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.safepulse.app',
               ),
-              MarkerLayer(markers: _buildMapMarkers()),
+              MarkerLayer(markers: _buildMapMarkers(provider)),
             ],
           ),
 
-          // Overlay
           SafeArea(
             child: Column(
               children: [
-                // Emergency header
                 FadeInDown(
                   child: Container(
                     margin: const EdgeInsets.all(16),
@@ -150,82 +139,59 @@ class _SOSActivePageState extends State<SOSActivePage> {
                     decoration: BoxDecoration(
                       color: Colors.red.shade700,
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.black45, blurRadius: 16)
-                      ],
+                      boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 16)],
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded,
-                            color: Colors.white, size: 36),
+                        const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 36),
                         const SizedBox(width: 14),
                         const Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('SOS ACTIVE',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 22)),
-                              Text('Contacts & nearby users notified',
-                                  style: TextStyle(
-                                      color: Colors.white70, fontSize: 12)),
+                              Text('SOS ACTIVE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
+                              Text('Contacts & nearby users notified', style: TextStyle(color: Colors.white70, fontSize: 12)),
                             ],
                           ),
                         ),
-                        if (_isLoading)
-                          const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2)),
+                        if (provider.isLoading)
+                          const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
                       ],
                     ),
                   ),
                 ),
 
-                // Stats
                 FadeInUp(
                   delay: const Duration(milliseconds: 200),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       children: [
-                        _statCard(
-                            'Contacts\nNotified', contactsCount, Colors.orange),
+                        _statCard('Contacts\nNotified', contactsCount, Colors.orange),
                         const SizedBox(width: 10),
-                        _statCard(
-                            'Nearby\nAlerted', nearbyCount, Colors.yellow),
+                        _statCard('Nearby\nAlerted', nearbyCount, Colors.yellow),
                         const SizedBox(width: 10),
-                        _statCard('Active\nResponders', respondersCount,
-                            Colors.green),
+                        _statCard('Active\nResponders', respondersCount, Colors.green),
                       ],
                     ),
                   ),
                 ),
 
-                // Nearby services count
-                if (_nearbyServices.isNotEmpty)
+                if (services.isNotEmpty)
                   FadeInUp(
                     delay: const Duration(milliseconds: 400),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
-                          children: _nearbyServices.take(5).map((s) {
+                          children: services.take(5).map((s) {
                             return Padding(
                               padding: const EdgeInsets.only(right: 8.0),
                               child: _serviceChip(
-                                s['type'] == 'hospital'
-                                    ? Icons.local_hospital
-                                    : Icons.local_police,
+                                s['type'] == 'hospital' ? Icons.local_hospital : Icons.local_police,
                                 '${s['name']} - ${_fmtDist(s['distanceMeters'].toDouble())}',
-                                s['type'] == 'hospital'
-                                    ? Colors.blue
-                                    : Colors.indigo,
+                                s['type'] == 'hospital' ? Colors.blue : Colors.indigo,
                               ),
                             );
                           }).toList(),
@@ -236,7 +202,6 @@ class _SOSActivePageState extends State<SOSActivePage> {
 
                 const Spacer(),
 
-                // Cancel button
                 FadeInUp(
                   delay: const Duration(milliseconds: 600),
                   child: Padding(
@@ -244,19 +209,14 @@ class _SOSActivePageState extends State<SOSActivePage> {
                     child: ElevatedButton.icon(
                       onPressed: _isCancelling ? null : _cancelSOS,
                       icon: _isCancelling
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Icon(Icons.cancel),
                       label: const Text('Cancel SOS'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.red.shade700,
                         minimumSize: const Size(double.infinity, 52),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
                   ),
@@ -273,20 +233,12 @@ class _SOSActivePageState extends State<SOSActivePage> {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.black38,
-          borderRadius: BorderRadius.circular(14),
-        ),
+        decoration: BoxDecoration(color: Colors.black38, borderRadius: BorderRadius.circular(14)),
         child: Column(
           children: [
-            Text('$value',
-                style: TextStyle(
-                    color: color, fontSize: 28, fontWeight: FontWeight.bold)),
+            Text('$value', style: TextStyle(color: color, fontSize: 28, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text(label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: Colors.white70, fontSize: 10, height: 1.3)),
+            Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 10, height: 1.3)),
           ],
         ),
       ),
@@ -306,9 +258,7 @@ class _SOSActivePageState extends State<SOSActivePage> {
         children: [
           Icon(icon, color: color, size: 14),
           const SizedBox(width: 6),
-          Text(label,
-              style: TextStyle(
-                  color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
         ],
       ),
     );

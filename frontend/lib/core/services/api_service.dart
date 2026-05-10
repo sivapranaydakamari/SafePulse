@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import '../config/app_config.dart';
 import '../utils/error_handler.dart';
 
@@ -414,6 +415,42 @@ class ApiService {
       return jsonDecode(response.body);
     } catch (e) {
       return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  // SafePulse specific SOS (from safepulse/services/api_service.dart)
+  static Future<bool> sendSafePulseSOS(
+    double lat,
+    double lng,
+    String severity, {
+    bool hasLocation = true,
+    int? locationAgeSec,
+  }) async {
+    final eventId = const Uuid().v4();
+
+    final payload = {
+      "eventId": eventId,
+      "latitude": lat,
+      "longitude": lng,
+      "locationStatus": hasLocation ? "OK" : "UNAVAILABLE",
+      "locationAgeSec": locationAgeSec,
+      "severity": severity,
+      "timestamp": DateTime.now().toIso8601String(),
+    };
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse("$baseUrl/api/sos"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 5));
+
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      debugPrint('[SafePulse API] sendSafePulseSOS error: $e');
+      return false;
     }
   }
 }

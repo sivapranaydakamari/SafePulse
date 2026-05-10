@@ -1,9 +1,10 @@
+// MOVED FROM: lib/features/auth/screens/otp_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import '../../../core/services/api_service.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../home/screens/home_page.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -52,9 +53,12 @@ class _OtpScreenState extends State<OtpScreen> {
   Future<void> _handleResend() async {
     if (_resendCooldown > 0) return;
     setState(() => _isLoading = true);
+    
+    final authProvider = context.read<AuthProvider>();
     final result = widget.email != null 
-      ? await ApiService.sendEmailOtp(widget.email!)
-      : await ApiService.sendOtp(widget.phoneNumber!);
+      ? await authProvider.sendEmailOtp(widget.email!)
+      : await authProvider.sendOtp(widget.phoneNumber!);
+
     if (mounted) {
       setState(() => _isLoading = false);
       if (result['success'] == true) {
@@ -80,31 +84,25 @@ class _OtpScreenState extends State<OtpScreen> {
     });
 
     try {
-      final result = await ApiService.verifyOtp(
+      final authProvider = context.read<AuthProvider>();
+      final result = await authProvider.verifyOtp(
         widget.phoneNumber, 
         otp, 
         email: widget.email
       );
 
       if (result['success'] == true) {
-        final prefs = await SharedPreferences.getInstance();
+        // Use AuthProvider to save session instead of direct prefs/ApiService
+        await authProvider.saveSession(
+          userId: result['user']['_id'],
+          token: result['token'],
+        );
 
-        // Save persistent user data
-        await prefs.setString('token',     result['token']);
-        await prefs.setString('userId',    result['user']['_id']);
-        await prefs.setString('userName',  result['user']['name'] ?? 'SafePulse User');
-        await prefs.setString('userPhone', result['user']['phone'] ?? '');
-        await prefs.setString('userEmail', result['user']['email'] ?? '');
-        await prefs.setString('loginType', result['user']['loginType'] ?? 'phone');
-
-        // For backward compatibility with any code using 'auth_token'
-        await prefs.setString('auth_token', result['token']);
-
-        // Register FCM token so push notifications work
+        // Register FCM token via Provider
         try {
           final fcmToken = await FirebaseMessaging.instance.getToken();
           if (fcmToken != null) {
-            await ApiService.updateStatus(
+            await authProvider.updateStatus(
               lat: 0, lng: 0, fcmToken: fcmToken,
             );
           }
