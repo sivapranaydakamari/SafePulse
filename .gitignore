@@ -36,3 +36,19 @@ backend/yarn.lock
 # Firebase
 frontend/android/app/google-services.json
 frontend/ios/Runner/GoogleService-Info.plist
+
+# Coverage Reports
+coverage/
+lcov.info
+
+# JEST
+.nyc_output/
+jest-cache/
+
+# Test Outputs
+test-results/
+reports/
+junit.xml
+
+# Large files
+*.hprof
