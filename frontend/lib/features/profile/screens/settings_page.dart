@@ -10,6 +10,8 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/repositories/user_repository.dart';
+import '../../../core/services/api_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../auth/screens/login_screen.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -226,64 +228,142 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _showPrivacyPermissions() async {
-    final locationStatus = await Permission.location.status;
-    final notificationStatus = await Permission.notification.status;
-    final contactsStatus = await Permission.contacts.status;
+    final location = await Permission.location.status;
+    final notifications = await Permission.notification.status;
+    final contacts = await Permission.contacts.status;
 
     if (!mounted) return;
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: AppColors.background,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Privacy & Permissions',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            _buildPermissionRow('Location', locationStatus),
-            _buildPermissionRow('Notifications', notificationStatus),
-            _buildPermissionRow('Contacts', contactsStatus),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                onPressed: () {
-                  Navigator.pop(context);
-                  openAppSettings();
-                },
-                child: const Text('Open System Settings'),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Privacy & Permissions',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Manage how SafePulse accesses your data',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildPermissionToggle(
+                    'Location Access',
+                    'Required for crash detection & SOS',
+                    location.isGranted,
+                    (v) async {
+                      if (v) {
+                        await Permission.location.request();
+                        setModalState(() {});
+                      } else {
+                        openAppSettings();
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildPermissionToggle(
+                    'Notifications',
+                    'Alerts for risks and safety updates',
+                    notifications.isGranted,
+                    (v) async {
+                      if (v) {
+                        await Permission.notification.request();
+                        setModalState(() {});
+                      } else {
+                        openAppSettings();
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildPermissionToggle(
+                    'Contacts',
+                    'Required to add emergency contacts',
+                    contacts.isGranted,
+                    (v) async {
+                      if (v) {
+                        await Permission.contacts.request();
+                        setModalState(() {});
+                      } else {
+                        openAppSettings();
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.surface,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Close'),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildPermissionRow(String title, PermissionStatus status) {
-    bool isGranted = status.isGranted;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+  Widget _buildPermissionToggle(
+      String title, String subtitle, bool isGranted, Function(bool) onChanged) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.surface),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 16)),
-          Text(
-            isGranted ? 'Granted' : 'Denied',
-            style: TextStyle(
-              color: isGranted ? AppColors.primary : AppColors.risk,
-              fontWeight: FontWeight.bold,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(subtitle,
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              ],
             ),
+          ),
+          Switch.adaptive(
+            value: isGranted,
+            activeColor: AppColors.primary,
+            onChanged: onChanged,
           ),
         ],
       ),
@@ -293,43 +373,261 @@ class _SettingsPageState extends State<SettingsPage> {
   void _showHelpCenter() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: AppColors.background,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Help Center',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            _buildFaqItem('How does crash detection work?', 'We use your phone sensors to detect sudden impacts.'),
-            _buildFaqItem('How do I add emergency contacts?', 'Go to Safety Settings > SOS Emergency Contacts.'),
-            const SizedBox(height: 16),
-            const Text('Need more help?', style: TextStyle(color: Colors.white, fontSize: 16)),
-            const SizedBox(height: 8),
-            const Text('Contact us at support@safepulse.app', style: TextStyle(color: AppColors.primary)),
-            const SizedBox(height: 20),
-          ],
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (_, scrollController) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Help Center',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('How can we help you today?',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+              const SizedBox(height: 24),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  children: [
+                    _buildFaqItem(
+                        'How does crash detection work?',
+                        'SafePulse uses your phone\'s accelerometer and gyroscope to detect high-G impacts. When an impact is detected, the app starts a countdown. If you don\'t cancel it, an SOS is automatically triggered.'),
+                    _buildFaqItem(
+                        'Will it drain my battery?',
+                        'The background engine is highly optimized for low power consumption. However, active GPS tracking during monitoring may use slightly more battery than usual.'),
+                    _buildFaqItem(
+                        'How do I add emergency contacts?',
+                        'Go to Safety Settings > SOS Emergency Contacts. You can add up to 3 contacts who will receive SMS alerts with your live location during an SOS.'),
+                    _buildFaqItem(
+                        'What are Circles?',
+                        'Circles allow you to share your safety status with friends and family. You can see each other on a map and receive alerts if someone in your circle triggers an SOS.'),
+                    _buildFaqItem(
+                        'How do I cancel a false alarm?',
+                        'If a crash is detected, you have 15 seconds to tap "Cancel" on the countdown screen before alerts are sent.'),
+                  ],
+                ),
+              ),
+              const Divider(color: AppColors.surface, height: 32),
+              const Text('Need more help?',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  _showSupportForm();
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.email_outlined, color: AppColors.primary),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text('Send us a message',
+                            style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                      Icon(Icons.arrow_forward_ios, color: AppColors.primary, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
   }
 
+  void _showSupportForm() {
+    final messageController = TextEditingController();
+    final subjectController = TextEditingController(text: 'Support Request');
+    bool isSending = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Contact Support',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'We\'ll reply to your registered account',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: subjectController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Subject',
+                    labelStyle: TextStyle(color: AppColors.textSecondary),
+                    filled: true,
+                    fillColor: AppColors.cardBg,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.surface),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.surface),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.primary),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: messageController,
+                  maxLines: 5,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Describe your issue...',
+                    alignLabelWithHint: true,
+                    labelStyle: TextStyle(color: AppColors.textSecondary),
+                    filled: true,
+                    fillColor: AppColors.cardBg,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.surface),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.surface),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.primary),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: isSending
+                        ? null
+                        : () async {
+                            final msg = messageController.text.trim();
+                            if (msg.length < 10) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please write at least 10 characters.'),
+                                  backgroundColor: AppColors.risk,
+                                ),
+                              );
+                              return;
+                            }
+                            setModalState(() => isSending = true);
+                            final success = await ApiService.sendSupportEmail(
+                              name: _userName,
+                              phone: _userPhone,
+                              loginType: _loginType,
+                              subject: subjectController.text.trim(),
+                              message: msg,
+                            );
+                            setModalState(() => isSending = false);
+                            if (mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    success
+                                        ? 'Message sent! We\'ll get back to you soon.'
+                                        : 'Failed to send. Please try again.',
+                                  ),
+                                  backgroundColor: success ? AppColors.primary : AppColors.risk,
+                                ),
+                              );
+                            }
+                          },
+                    icon: isSending
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send_rounded),
+                    label: Text(isSending ? 'Sending...' : 'Send Message'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildFaqItem(String question, String answer) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        title: Text(question,
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
         children: [
-          Text(question, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text(answer, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+            child: Text(answer,
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
+          ),
         ],
       ),
     );

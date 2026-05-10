@@ -46,6 +46,7 @@ app.use('/api/places',   require('./routes/places')); // ← NEW: India-focused 
 app.use('/api/services', require('./routes/services'));
 app.use('/api/alerts',   require('./routes/alerts'));
 app.use('/api/overpass', require('./routes/overpass'));
+app.use('/api/support',  require('./routes/support'));
 
 app.get('/', (req, res) => res.send('SafePulse API v2 running'));
 

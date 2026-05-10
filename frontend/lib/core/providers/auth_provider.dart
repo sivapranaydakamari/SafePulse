@@ -23,10 +23,11 @@ class AuthProvider extends ChangeNotifier {
     final loggedIn = await _repo.isLoggedIn();
     _userId = await _repo.getUserId();
     _status = loggedIn ? AuthStatus.authenticated : AuthStatus.unauthenticated;
-    if (loggedIn) {
-      await loadProfile();
-    }
     notifyListeners();
+    
+    if (loggedIn) {
+      loadProfile(); // Do not await, let it happen in background
+    }
   }
 
   Future<void> saveSession({

@@ -80,7 +80,7 @@ class _SOSActivePageState extends State<SOSActivePage> {
       ),
     ];
 
-    final services = provider.nearbyData?['services'] as List? ?? [];
+    final services = _getServices(provider);
     for (final s in services) {
       markers.add(Marker(
         point: LatLng(s['lat'], s['lon']),
@@ -109,7 +109,7 @@ class _SOSActivePageState extends State<SOSActivePage> {
     final nearbyCount = sos?.nearbyUsersNotified.length ?? 0;
     final respondersCount = sos?.responders.length ?? 0;
     
-    final services = provider.nearbyData?['services'] as List? ?? [];
+    final services = _getServices(provider);
 
     return Scaffold(
       backgroundColor: Colors.red.shade900,
@@ -262,6 +262,23 @@ class _SOSActivePageState extends State<SOSActivePage> {
         ],
       ),
     );
+  }
+
+  List<dynamic> _getServices(SOSProvider provider) {
+    final nearbyData = provider.nearbyData;
+    if (nearbyData == null) return [];
+
+    final servicesData = nearbyData['services'];
+    if (servicesData is List) return servicesData;
+
+    if (servicesData is Map) {
+      final List<dynamic> flattened = [];
+      flattened.addAll(servicesData['hospitals'] as List? ?? []);
+      flattened.addAll(servicesData['police'] as List? ?? []);
+      return flattened;
+    }
+
+    return [];
   }
 
   String _fmtDist(double m) {

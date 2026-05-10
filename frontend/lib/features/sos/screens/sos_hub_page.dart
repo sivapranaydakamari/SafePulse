@@ -11,6 +11,7 @@ import '../../../core/services/location_service.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/sos_provider.dart';
 import '../widgets/emergency_countdown.dart';
+import '../../../core/repositories/user_repository.dart';
 import './service_routing_page.dart';
 import './sos_active_page.dart';
 import '../models/nearby_service.dart';
@@ -37,7 +38,7 @@ class _SOSHubPageState extends State<SOSHubPage>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
-    _loadContacts();
+    _loadContacts().then((_) => _saveContacts());
     _updateNearbyServices();
   }
 
@@ -148,6 +149,11 @@ class _SOSHubPageState extends State<SOSHubPage>
     final contactsJson =
         _emergencyContacts.map((c) => "${c['name']}|${c['phone']}").toList();
     await prefs.setStringList('emergency_contacts', contactsJson);
+    
+    // Sync to backend so SOS start knows about them
+    if (mounted) {
+      await context.read<UserRepository>().syncEmergencyContacts(_emergencyContacts);
+    }
   }
 
   Future<void> _pickContact() async {
