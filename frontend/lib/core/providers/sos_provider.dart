@@ -20,6 +20,7 @@ class SOSProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isActive => _status == SOSStatus.active;
   Map<String, dynamic>? get nearbyData => _nearbyData;
+  String? get activeSosId => _activeSos?.id;
 
   Future<bool> startSOS({
     required double lat,
@@ -63,7 +64,7 @@ class SOSProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final response = await _repo.getNearbyServices(lat: lat, lon: lon);
-      _nearbyData = response?.toJson(); // Keeping dynamic map for UI compatibility but using model internally
+      _nearbyData = response; // response is already a Map
     } catch (e) {
       debugPrint('[SOSProvider] loadNearbyServices error: $e');
     } finally {
