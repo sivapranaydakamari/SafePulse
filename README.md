@@ -1,16 +1,112 @@
-# safepulse
+# SafePulse
 
-A new Flutter project.
+SafePulse is an AI-powered travel safety companion for real-time journey monitoring, route risk scoring, crash detection, and emergency response coordination.
 
-## Getting Started
+## What It Does
 
-This project is a starting point for a Flutter application.
+- Authenticates users with OTP/JWT through the Node.js API.
+- Maintains Safety Circles for trusted contacts and nearby responders.
+- Tracks journey speed, phone-use risk, route risk, and emergency status.
+- Scores safe-vs-short route options using OSRM/OpenStreetMap route data and incident-backed risk zones.
+- Streams realtime tracking and SOS alerts through WebSockets.
+- Analyzes accelerometer/gyroscope windows through a Python AI accident-analysis service.
+- Persists emergency events in a Spring Boot microservice with JPA/H2 or an external SQL database.
+- Sends SOS notifications through SMS/push notification adapters.
 
-A few resources to get you started if this is your first Flutter project:
+## Architecture
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+SafePulse uses a reviewable multi-service architecture:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- `frontend/` - Flutter mobile application with provider/repository/service separation.
+- `backend/` - Node.js API gateway for auth, circles, route scoring, realtime WebSockets, alerts, and AI proxying.
+- `backend-springboot/` - Spring Boot emergency-event microservice with JPA persistence.
+- `ai-service/` - Python FastAPI accident-analysis microservice using TensorFlow Lite when available and a deterministic calibrated fallback.
+
+## Key Services
+
+### Node.js API
+
+- `POST /api/auth/send-otp`
+- `POST /api/auth/verify-otp`
+- `POST /api/routes/suggest`
+- `GET /api/risk-zones`
+- `POST /api/risk-zones`
+- `POST /api/ai/accident/analyze`
+- `POST /api/sos/start`
+- `WS /ws/tracking`
+
+### Spring Boot Emergency Service
+
+- `POST /api/sos`
+- `GET /api/sos/{eventId}`
+- `GET /api/sos/active`
+- `PATCH /api/sos/{eventId}/resolve`
+
+### Python AI Service
+
+- `GET /health`
+- `GET /v1/model/metadata`
+- `POST /v1/accident/analyze`
+
+## Local Development
+
+### Node.js Backend
+
+```powershell
+cd backend
+npm install
+npm test
+npm start
+```
+
+### Spring Boot Emergency Service
+
+```powershell
+cd backend-springboot
+.\mvnw.cmd test
+.\mvnw.cmd spring-boot:run
+```
+
+### Python AI Service
+
+```powershell
+cd ai-service
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 7000
+```
+
+Run the lightweight AI unit tests:
+
+```powershell
+cd ai-service
+$env:PYTHONPATH='P:\SafePulse\ai-service'
+python -m unittest discover -s tests
+```
+
+### Flutter Frontend
+
+```powershell
+cd frontend
+flutter pub get
+flutter test
+flutter run --dart-define=BASE_URL=http://<backend-host>:5000
+```
+
+## Verification Status
+
+Current automated checks:
+
+- Node.js backend: Jest route/service tests.
+- Spring Boot emergency service: JUnit/MockMvc/JPA tests.
+- Python AI service: crash analyzer unit tests.
+
+## Production Readiness Notes
+
+- Keep secrets in environment variables, not source code.
+- Use a managed MongoDB deployment with geospatial indexes enabled.
+- Run the Spring Boot service with MySQL/PostgreSQL in production.
+- Host the Python AI service separately and set `AI_SERVICE_URL` in the Node backend.
+- Replace public OSRM calls with a self-hosted or paid routing provider before production traffic.
+- Use Firebase/Twilio production credentials only through secure environment configuration.

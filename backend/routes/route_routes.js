@@ -4,17 +4,18 @@ const axios   = require('axios');
 const polyline = require('@mapbox/polyline');
 const { requireAuth } = require('../middleware/auth');
 const routeScoringService = require('../services/route_scoring');
+const riskIncidentRepository = require('../services/risk_incident_repository');
 
+function isValidCoordinatePair(point) {
+  return Number.isFinite(Number(point?.lat)) && Number.isFinite(Number(point?.lng));
+}
 
 // Accepts: { start: {lat, lng}, destination: {lat, lng} }
 // Returns: { routes: [...], riskZones: [...] }
 router.post('/suggest', requireAuth, async (req, res) => {
   const { start, destination } = req.body;
 
-  if (
-    !start?.lat || !start?.lng ||
-    !destination?.lat || !destination?.lng
-  ) {
+  if (!isValidCoordinatePair(start) || !isValidCoordinatePair(destination)) {
     return res.status(400).json({
       message: 'start.lat, start.lng, destination.lat, destination.lng are all required',
     });
@@ -41,12 +42,13 @@ router.post('/suggest', requireAuth, async (req, res) => {
       polyline: polyline.decode(route.geometry), // [[lat, lng], ...]
     }));
 
-    const scoredRoutes = routeScoringService.scoreRoutes(rawRoutes);
+    const riskZones = await riskIncidentRepository.getRiskZonesForRoutes(rawRoutes);
+    const scoredRoutes = routeScoringService.scoreRoutes(rawRoutes, riskZones);
 
     res.json({
       success: true,
       routes: scoredRoutes,
-      riskZones: routeScoringService.getRiskZones(),
+      riskZones,
     });
   } catch (error) {
     console.error('[ROUTES] suggest error:', error.message);
