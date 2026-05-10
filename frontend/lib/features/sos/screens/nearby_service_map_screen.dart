@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/services/api_service.dart';
+import '../../../core/repositories/sos_repository.dart';
 import '../models/nearby_service.dart';
 import '../../home/screens/full_route_map_screen.dart';
 
@@ -30,11 +30,12 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
   Timer? _debounce;
   bool _isLoading = false;
   String _statusText = '';
+  late SOSRepository _sosRepo;
 
   @override
   void initState() {
     super.initState();
-    // Initially only show 3-4 points as requested
+    _sosRepo = context.read<SOSRepository>();
     _cachedServices.addAll(widget.services.take(4));
     _statusText = 'Showing closest ${_cachedServices.length} services';
 
@@ -76,7 +77,7 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
     final type = widget.title.contains('Hospital') ? 'hospital' : 'police';
 
     try {
-      final result = await ApiService.getServicesInBBox(
+      final result = await _sosRepo.getServicesInBBox(
         south: bounds.south,
         west: bounds.west,
         north: bounds.north,
@@ -191,7 +192,6 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
   }
 
   Future<void> _navigateTo(double lat, double lon) async {
-    // Show loading
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -200,14 +200,14 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
     );
 
     try {
-      final routesData = await ApiService.suggestRoutes(
+      final routesData = await _sosRepo.suggestRoutes(
         startLat: widget.userLocation.latitude,
         startLng: widget.userLocation.longitude,
         destLat: lat,
         destLng: lon,
       );
 
-      if (mounted) Navigator.pop(context); // hide loading
+      if (mounted) Navigator.pop(context);
 
       if (routesData['routes'] != null && (routesData['routes'] as List).isNotEmpty) {
         final routes = routesData['routes'] as List<dynamic>;
@@ -285,7 +285,6 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
               ),
               MarkerLayer(
                 markers: [
-                  // User Marker
                   Marker(
                     point: widget.userLocation,
                     width: 45,
@@ -293,7 +292,6 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
                     child: const Icon(Icons.my_location,
                         color: Colors.blue, size: 30),
                   ),
-                  // Service Markers
                   ..._cachedServices.map((s) => Marker(
                         point: LatLng(s.lat, s.lon),
                         width: 40,
@@ -327,8 +325,6 @@ class _NearbyServiceMapScreenState extends State<NearbyServiceMapScreen> {
               ),
             ],
           ),
-
-          // Re-center button
           Positioned(
             bottom: 24,
             right: 24,

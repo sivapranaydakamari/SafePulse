@@ -3,10 +3,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:telephony/telephony.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/location_service.dart';
-import '../../../core/services/api_service.dart';
+import '../../../core/repositories/sos_repository.dart';
 
 class EmergencyCountdown extends StatefulWidget {
   const EmergencyCountdown({super.key});
@@ -21,10 +22,12 @@ class _EmergencyCountdownState extends State<EmergencyCountdown> {
 
   Position? _preFetchedPosition;
   final Telephony _telephony = Telephony.instance;
+  late SOSRepository _sosRepo;
 
   @override
   void initState() {
     super.initState();
+    _sosRepo = context.read<SOSRepository>();
     _startTimer();
     _preFetchLocation();
     _requestSmsPermission();
@@ -56,7 +59,6 @@ class _EmergencyCountdownState extends State<EmergencyCountdown> {
   Future<void> _triggerAlert() async {
     _timer?.cancel();
     
-    // 1. Finalize location (use pre-fetched if available, otherwise get now)
     Position? currentPos = _preFetchedPosition;
     if (currentPos == null) {
       try {
@@ -70,7 +72,6 @@ class _EmergencyCountdownState extends State<EmergencyCountdown> {
       ? "https://www.google.com/maps/search/?api=1&query=${currentPos.latitude},${currentPos.longitude}"
       : "Location unavailable";
 
-    // 2. Notify Backend and Send Alerts in parallel for maximum speed
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('userId');
     final contactsJson = prefs.getStringList('emergency_contacts') ?? [];
@@ -80,17 +81,14 @@ class _EmergencyCountdownState extends State<EmergencyCountdown> {
       return {'name': parts[0], 'phone': parts[1]};
     }).toList();
 
-    // Trigger all alerts concurrently
     Future.wait([
-      // Backend update
       if (userId != null && currentPos != null)
-        ApiService.startSOS(
+        _sosRepo.startSOS(
           lat: currentPos.latitude,
           lng: currentPos.longitude,
           address: "SOS Countdown Triggered",
         ),
       
-      // Background SMS to all contacts
       ...contacts.map((contact) => _sendBackgroundSMS(
         contact['phone']!, 
         "EMERGENCY! I need help. My live location: $locationUrl"
@@ -99,7 +97,6 @@ class _EmergencyCountdownState extends State<EmergencyCountdown> {
       debugPrint("All background alerts initiated.");
     });
 
-    // 3. Initiate Phone Call (most important, show immediately)
     if (contacts.isNotEmpty) {
       _makeCall(contacts.first['phone']!);
     }
@@ -112,7 +109,6 @@ class _EmergencyCountdownState extends State<EmergencyCountdown> {
       ),
     );
     
-    // Return to home after a delay
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
@@ -185,7 +181,6 @@ class _EmergencyCountdownState extends State<EmergencyCountdown> {
             ),
             const SizedBox(height: 40),
             
-            // Large Countdown Circle
             Stack(
               alignment: Alignment.center,
               children: [
@@ -212,7 +207,6 @@ class _EmergencyCountdownState extends State<EmergencyCountdown> {
             
             const SizedBox(height: 60),
             
-            // Action Buttons
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: Column(

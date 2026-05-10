@@ -1,4 +1,5 @@
-// MOVED FROM: lib/core/repositories/circle_repository.dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../services/api_service.dart';
 import '../models/circle.dart';
 
@@ -19,5 +20,33 @@ class CircleRepository {
 
   Future<Map<String, dynamic>> joinCircle(String inviteCode) {
     return ApiService.joinCircle(inviteCode);
+  }
+
+  Future<void> updateMemberLocation({
+    required double lat,
+    required double lng,
+    required int batteryLevel,
+  }) async {
+    final headers = await ApiService.authHeaders();
+    await http.put(
+      Uri.parse('${ApiService.baseUrl}/api/circle/update-location'),
+      headers: {...headers, 'Content-Type': 'application/json'},
+      body: jsonEncode({'lat': lat, 'lng': lng, 'batteryLevel': batteryLevel}),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getCircleMemberLocations(String circleId) async {
+    final headers = await ApiService.authHeaders();
+    final res = await http.get(
+      Uri.parse('${ApiService.baseUrl}/api/circle/$circleId/members-location'),
+      headers: headers,
+    );
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      if (data['success'] == true) {
+        return List<Map<String, dynamic>>.from(data['members'] ?? []);
+      }
+    }
+    return [];
   }
 }

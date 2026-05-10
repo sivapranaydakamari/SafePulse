@@ -1,4 +1,3 @@
-// UPDATED
 import 'package:flutter/foundation.dart';
 
 class SOSEvent {
@@ -9,6 +8,9 @@ class SOSEvent {
   final String address;
   final String status;
   final DateTime createdAt;
+  final List<dynamic> contactsNotified;
+  final List<dynamic> nearbyUsersNotified;
+  final List<dynamic> responders;
 
   SOSEvent({
     required this.id,
@@ -18,6 +20,9 @@ class SOSEvent {
     required this.address,
     required this.status,
     required this.createdAt,
+    this.contactsNotified = const [],
+    this.nearbyUsersNotified = const [],
+    this.responders = const [],
   });
 
   factory SOSEvent.fromJson(Map<String, dynamic> json) {
@@ -31,6 +36,9 @@ class SOSEvent {
       createdAt: json['createdAt'] != null 
           ? DateTime.tryParse(json['createdAt']) ?? DateTime.now()
           : DateTime.now(),
+      contactsNotified: json['contactsNotified'] ?? [],
+      nearbyUsersNotified: json['nearbyUsersNotified'] ?? [],
+      responders: json['responders'] ?? [],
     );
   }
 
@@ -43,6 +51,9 @@ class SOSEvent {
       'address': address,
       'status': status,
       'createdAt': createdAt.toIso8601String(),
+      'contactsNotified': contactsNotified,
+      'nearbyUsersNotified': nearbyUsersNotified,
+      'responders': responders,
     };
   }
 
@@ -54,6 +65,9 @@ class SOSEvent {
     String? address,
     String? status,
     DateTime? createdAt,
+    List<dynamic>? contactsNotified,
+    List<dynamic>? nearbyUsersNotified,
+    List<dynamic>? responders,
   }) {
     return SOSEvent(
       id: id ?? this.id,
@@ -63,6 +77,9 @@ class SOSEvent {
       address: address ?? this.address,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
+      contactsNotified: contactsNotified ?? this.contactsNotified,
+      nearbyUsersNotified: nearbyUsersNotified ?? this.nearbyUsersNotified,
+      responders: responders ?? this.responders,
     );
   }
 
@@ -76,7 +93,10 @@ class SOSEvent {
         other.lng == lng &&
         other.address == address &&
         other.status == status &&
-        other.createdAt == createdAt;
+        other.createdAt == createdAt &&
+        listEquals(other.contactsNotified, contactsNotified) &&
+        listEquals(other.nearbyUsersNotified, nearbyUsersNotified) &&
+        listEquals(other.responders, responders);
   }
 
   @override
@@ -87,5 +107,8 @@ class SOSEvent {
       lng.hashCode ^
       address.hashCode ^
       status.hashCode ^
-      createdAt.hashCode;
+      createdAt.hashCode ^
+      contactsNotified.hashCode ^
+      nearbyUsersNotified.hashCode ^
+      responders.hashCode;
 }
