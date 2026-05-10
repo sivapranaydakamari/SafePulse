@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:telephony/telephony.dart';
+import 'core/repositories/user_repository.dart';
+import 'core/repositories/sos_repository.dart';
+import 'core/repositories/circle_repository.dart';
+import 'core/providers/auth_provider.dart';
+import 'core/providers/sos_provider.dart';
+import 'core/providers/circle_provider.dart';
+import 'core/services/api_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/screens/splash_screen.dart';
 import 'features/safepulse/services/background_service.dart';
 import 'features/home/screens/home_page.dart';
-import 'core/services/api_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -37,7 +43,7 @@ void main() async {
   runApp(const SafePulseApp());
 }
 
-class SafePulseApp extends StatefulWidget {
+class SafePulseApp extends StatelessWidget {
   const SafePulseApp({super.key});
 
   @override
@@ -45,13 +51,10 @@ class SafePulseApp extends StatefulWidget {
 }
 
 class _SafePulseAppState extends State<SafePulseApp> {
-  bool _isLoggedIn = false;
-  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _checkLoginStatus();
     _setupEmergencyListener();
   }
 
@@ -86,27 +89,41 @@ class _SafePulseAppState extends State<SafePulseApp> {
     });
   }
 
-  Future<void> _checkLoginStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _isLoggedIn =
-          prefs.containsKey('userId') && prefs.containsKey('auth_token');
-      _isLoading = false;
-    });
+  @override
+  Widget build(BuildContext context) {
+    // 1. Create repositories
+    final userRepo   = UserRepository();
+    final sosRepo    = SOSRepository();
+    final circleRepo = CircleRepository();
+
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider(userRepo)..initialize()),
+        ChangeNotifierProvider(create: (_) => SOSProvider(sosRepo)),
+        ChangeNotifierProvider(create: (_) => CircleProvider(circleRepo)),
+      ],
+      child: MaterialApp(
+        title: 'SafePulse',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.darkTheme,
+        home: const AppGate(),
+      ),
+    );
   }
+}
+
+// AppGate watches AuthProvider and routes accordingly
+class AppGate extends StatelessWidget {
+  const AppGate({super.key});
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const MaterialApp(
-        home: Scaffold(body: Center(child: CircularProgressIndicator())),
-      );
-    }
-    return MaterialApp(
-      title: 'SafePulse',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      home: _isLoggedIn ? const HomePage() : const SplashScreen(),
-    );
+    final authStatus = context.watch<AuthProvider>().status;
+
+    return switch (authStatus) {
+      AuthStatus.unknown         => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      AuthStatus.authenticated   => const HomePage(),
+      AuthStatus.unauthenticated => const SplashScreen(),
+    };
   }
 }

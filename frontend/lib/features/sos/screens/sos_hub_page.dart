@@ -8,7 +8,9 @@ import 'package:latlong2/latlong.dart';
 import 'dart:async';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/location_service.dart';
-import '../../../core/services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../../../core/providers/sos_provider.dart';
+import '../widgets/emergency_countdown.dart';
 import './service_routing_page.dart';
 import './sos_active_page.dart';
 import '../models/nearby_service.dart';
@@ -51,16 +53,15 @@ class _SOSHubPageState extends State<SOSHubPage>
 
     try {
       final position = await LocationService.getCurrentLocation();
-      final data = await ApiService.getNearbyServices(
+      await context.read<SOSProvider>().loadNearbyServices(
         lat: position.latitude,
         lon: position.longitude,
-        radius: 5000,
       );
 
       if (mounted) {
         setState(() {
           _currentLocation = "Near your current location";
-          _nearbyData = data;
+          _nearbyData = context.read<SOSProvider>().nearbyData;
           _isLoadingServices = false;
         });
         _mapController.move(LatLng(position.latitude, position.longitude), 14);
@@ -249,34 +250,26 @@ class _SOSHubPageState extends State<SOSHubPage>
     setState(() => _isTriggeringSOS = true);
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId');
-      if (userId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please login first")),
-        );
-        return;
-      }
-
       final pos = await LocationService.getCurrentLocation();
-
-      // Call Backend
-      final result = await ApiService.startSOS(
+      final success = await context.read<SOSProvider>().startSOS(
         lat: pos.latitude,
         lng: pos.longitude,
         address: _currentLocation.replaceFirst("Your Location: ", ""),
       );
 
-      if (result != null && mounted) {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SOSActivePage(
-              sosId: result['sosId'],
-              initialLocation: LatLng(pos.latitude, pos.longitude),
+      if (success && mounted) {
+        final sosId = context.read<SOSProvider>().activeSosId;
+        if (sosId != null) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SOSActivePage(
+                sosId: sosId,
+                initialLocation: LatLng(pos.latitude, pos.longitude),
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     } finally {
       if (mounted) {
