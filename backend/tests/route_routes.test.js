@@ -8,9 +8,21 @@ jest.mock('@mapbox/polyline', () => ({
   decode: jest.fn().mockReturnValue([[10, 10]])
 }));
 
-jest.mock('../services/route_scoring', () => ({
-  scoreRoutes: jest.fn().mockReturnValue([]),
-  getRiskZones: jest.fn().mockReturnValue([])
+jest.mock('../services/route_scoring_updated', () => ({
+  RouteScoring: class {
+    async scoreRoutes(routes) {
+      return routes.map(r => ({
+        ...r,
+        routeId: r.id,
+        safetyScore: 85,
+        safetyLevel: 'safe',
+        riskScore: 15,
+        breakdown: {},
+        warnings: [],
+        recommendations: []
+      }));
+    }
+  }
 }));
 
 jest.mock('../middleware/auth', () => ({
@@ -35,12 +47,25 @@ describe('Route Routes', () => {
   });
 
   it('POST /api/routes/suggest - successful request', async () => {
-    axios.get.mockResolvedValueOnce({ data: { code: 'Ok', routes: [{ duration: 10, distance: 10, geometry: 'xyz' }] } });
+    axios.get.mockResolvedValueOnce({ 
+      data: { 
+        code: 'Ok',
+        routes: [{
+          geometry: { coordinates: [[10, 10], [20, 20]] },
+          distance: 100, 
+          duration: 10
+        }] 
+      } 
+    });
+    
     const res = await request(app).post('/api/routes/suggest').send({
       start: { lat: 10, lng: 10 },
       destination: { lat: 20, lng: 20 }
     });
+    
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.routes.length).toBeGreaterThan(0);
   });
 });
+

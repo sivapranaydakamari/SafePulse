@@ -11,6 +11,7 @@ import '../../../core/models/geocode_result.dart';
 import '../../../core/models/route_suggestion.dart';
 import 'driving_mode_page.dart';
 import 'full_route_map_screen.dart';
+import '../widgets/route_safety_details.dart';
 
 class RouteSuggestionPage extends StatefulWidget {
   const RouteSuggestionPage({super.key});
@@ -63,6 +64,22 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
       if (mounted) setState(() => _isLocationLoading = false);
     }
   }
+
+  void _showSafetyDetails(RouteSuggestion route) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) {
+        return RouteSafetyDetails(route: route);
+      },
+    ),
+  );
+}
 
   void _onDestinationChanged(String query) {
     _debounce?.cancel();
@@ -408,61 +425,147 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
   }
 
   Widget _buildRouteCard(int index, RouteSuggestion route) {
-    final selected = index == _selectedRouteIndex;
-    final color = _colorFromString(route.color);
-    
-    return GestureDetector(
-      onTap: () {
-        setState(() => _selectedRouteIndex = index);
-        final pts = route.polyline
-            .map((p) => LatLng(p[0], p[1]))
-            .toList();
-        _mapController.fitCamera(CameraFit.bounds(
-          bounds: LatLngBounds.fromPoints(pts),
-          padding: const EdgeInsets.all(100)
-        ));
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: selected ? color.withOpacity(0.1) : AppColors.cardBg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: selected ? color : Colors.white10, width: 2),
-        ),
-        child: Row(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _fmtDuration(route.duration),
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  _fmtDist(route.distance),
-                  style: const TextStyle(color: Colors.grey, fontSize: 13),
-                ),
-              ],
-            ),
-            const Spacer(),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
-                  child: Text(route.type, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: 4),
-                Text('Risk: ${route.riskScore}', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ],
-        ),
+  final selected = index == _selectedRouteIndex;
+  final color = _colorFromString(route.color);
+  
+  return GestureDetector(
+    onTap: () {
+      setState(() => _selectedRouteIndex = index);
+      final pts = route.polyline
+          .map((p) => LatLng(p[0], p[1]))
+          .toList();
+      _mapController.fitCamera(CameraFit.bounds(
+        bounds: LatLngBounds.fromPoints(pts),
+        padding: const EdgeInsets.all(100)
+      ));
+    },
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: selected ? color.withOpacity(0.1) : AppColors.cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: selected ? color : Colors.white10, width: 2),
       ),
-    );
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _fmtDuration(route.duration),
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    _fmtDist(route.distance),
+                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
+                    child: Text(route.type, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text('Risk: ${route.riskScore}', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              // Add this after the second Column (around line 474)
+IconButton(
+  icon: Icon(Icons.info_outline, color: Colors.white70),
+  onPressed: () => _showSafetyDetails(route),
+  tooltip: 'View safety details',
+),
+            ],
+          ),
+          
+          // ✨ ADD THIS - Safety badge
+          const SizedBox(height: 12),
+          _buildSafetyBadge(route),
+          
+          // ✨ ADD THIS - Warning count if any
+          if (route.warnings.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber, color: Colors.orange, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${route.warnings.length} warning(s)',
+                    style: TextStyle(color: Colors.orange, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+
+Widget _buildSafetyBadge(RouteSuggestion route) {
+  final color = _getSafetyColor(route.safetyScore);
+  final icon = _getSafetyIcon(route.safetyLevel);
+  
+  return Container(
+    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      border: Border.all(color: color, width: 1.5),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+        SizedBox(width: 6),
+        Text(
+          'Safety: ${route.safetyScore}/100',
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Color _getSafetyColor(int score) {
+  if (score >= 80) return Colors.green;
+  if (score >= 60) return Colors.lightGreen;
+  if (score >= 40) return Colors.orange;
+  if (score >= 20) return Colors.deepOrange;
+  return Colors.red;
+}
+
+IconData _getSafetyIcon(String level) {
+  switch (level) {
+    case 'very_safe':
+      return Icons.verified_user;
+    case 'safe':
+      return Icons.check_circle;
+    case 'moderate':
+      return Icons.info;
+    case 'caution':
+      return Icons.warning_amber;
+    case 'unsafe':
+      return Icons.dangerous;
+    default:
+      return Icons.help;
   }
+}
 
   void _startJourney(RouteSuggestion route) {
     Navigator.push(

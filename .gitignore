@@ -98,3 +98,5 @@ junit.xml
 
 # Large files
 *.hprof
+
+data/

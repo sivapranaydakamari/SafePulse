@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "init-crime-data": "node scripts/init_crime_data.js",
+    "test": "jest"
   },
   "dependencies": {
     "@mapbox/polyline": "^1.2.1",
@@ -18,10 +20,18 @@
     "mongoose": "^8.0.3",
     "nodemailer": "^8.0.7",
     "nodemon": "^3.0.2",
-    "twilio": "^4.20.0"
+    "twilio": "^4.20.0",
+    "csv-parser": "^3.0.0",
+    "bcryptjs": "^2.4.3",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^6.11.1"
   },
   "devDependencies": {
     "jest": "^30.4.2",
-    "supertest": "^7.2.2"
+    "supertest": "^7.2.2",
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
