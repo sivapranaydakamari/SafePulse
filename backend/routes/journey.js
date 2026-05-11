@@ -18,6 +18,21 @@ router.post('/update', requireAuth, async (req, res) => {
       await notificationService.broadcastToCircle(circleTokens, 'Emergency Alert', result.message);
     }
 
+    const realtimeHub = req.app.get('realtimeHub');
+    if (realtimeHub?.isEnabled && (result.warningSent || result.circleNotified)) {
+      realtimeHub.broadcastSafetyEvent({
+        type: result.circleNotified ? 'circle:safety-alert' : 'user:safety-warning',
+        userIds: req.body.circleMemberIds || [],
+        data: {
+          userId,
+          status: result.status,
+          message: result.message,
+          speed,
+          sentBy: 'journey-rest-fallback',
+        },
+      });
+    }
+
     res.json({
       success: true,
       status:  result.status,

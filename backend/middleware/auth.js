@@ -19,9 +19,13 @@ function requireAuth(req, res, next) {
   }
 }
 
+function verifyToken(token) {
+  return jwt.verify(token, JWT_SECRET);
+}
+
 // Generate a JWT for a user. Call after OTP verification.
 function signToken(userId) {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '30d' });
 }
 
-module.exports = { requireAuth, signToken };
+module.exports = { requireAuth, signToken, verifyToken };
