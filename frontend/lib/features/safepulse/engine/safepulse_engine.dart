@@ -70,6 +70,7 @@ class SafePulseEngine {
   DateTime? _lastRecoveryTime;
 
   EngineHealthState healthState = EngineHealthState.active;
+  TrackingStatus trackingStatus = TrackingStatus.connected;
   Timer? _watchdogTimer;
   bool _stopping = false;
 
@@ -88,6 +89,8 @@ class SafePulseEngine {
     _lastEmergencyTrigger = DateTime.now();
     return true;
   }
+
+  bool get isAiModelLoaded => aiService.isModelLoaded;
 
   EngineSeverity get severity {
     switch (healthState) {
@@ -183,8 +186,15 @@ class SafePulseEngine {
       });
     };
 
-    // Init AI
-    aiService.initialize();
+    // Init AI — log a warning if the TFLite model fails to load
+    aiService.initialize().then((_) {
+      if (!aiService.isModelLoaded) {
+        log(
+          "⚠️ AI model unavailable. Running in basic threshold mode.",
+          level: LogLevel.warning,
+        );
+      }
+    });
     alertService.initialize();
   }
 
@@ -392,11 +402,14 @@ class SafePulseEngine {
   }
 
   Future<void> _connectRealtimeTracking() async {
-    try {
-      await realtimeTrackingService.connect();
+    final status = await realtimeTrackingService.connect();
+    trackingStatus = status;
+    if (status == TrackingStatus.connected) {
       log("Realtime WebSocket tracking connected.");
-    } catch (e) {
-      log("Realtime WebSocket unavailable: $e", level: LogLevel.warning);
+    } else if (status == TrackingStatus.failedNoToken) {
+      log("Realtime sync unavailable — no auth token. Running in local mode.", level: LogLevel.warning);
+    } else {
+      log("Realtime WebSocket unavailable. Running in local mode.", level: LogLevel.warning);
     }
   }
 }

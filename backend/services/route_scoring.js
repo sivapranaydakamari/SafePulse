@@ -84,10 +84,6 @@ function scoreRoutes(routes, riskZones = []) {
 
   scored.sort((a, b) => a.riskScore - b.riskScore);
 
-  while (scored.length > 0 && scored.length < 3) {
-    scored.push(createSyntheticVariant(scored[scored.length - 1], scored.length));
-  }
-
   return scored.slice(0, 3);
 }
 

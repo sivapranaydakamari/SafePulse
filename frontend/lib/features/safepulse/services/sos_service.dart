@@ -23,12 +23,6 @@ class SosService {
       return parts.length > 1 ? parts[1] : parts[0];
     }).where((phone) => phone.isNotEmpty).toList();
     
-    if (emergencyContacts.isEmpty) {
-      emergencyContacts = [
-        "+919381363374",
-        "+918143837005",
-      ];
-    }
   }
 
   Function(String message)? onLog;
@@ -74,6 +68,14 @@ class SosService {
     double speedMs = 0.0,
   }) async {
     await _loadContacts();
+
+    if (emergencyContacts.isEmpty) {
+      onLog?.call(
+        "⚠️ No emergency contacts configured. Please add contacts in Settings before using SOS.",
+      );
+      return;
+    }
+
     final now = DateTime.now();
     String timestamp =
         "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
