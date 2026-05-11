@@ -105,16 +105,48 @@ Note: `frontend/packages/telephony_fix` is a local patched Telephony plugin used
 
 SafePulse officially targets Android only. The windows/ Flutter scaffold directory exists but is untested, unsupported, and excluded from all CI pipelines and releases.
 
+## Docker deployment
+
+All services can be started together with Docker Compose:
+
+```bash
+cp backend/.env.example backend/.env   # fill in secrets
+docker compose up --build
+```
+
+| Service | Container port | Host port |
+|---|---|---|
+| Node.js API gateway | 5000 | 5000 |
+| Spring Boot emergency service | 8080 | 8080 |
+| Python AI service | 7000 | 7000 |
+| MongoDB | 27017 | 27017 |
+
+Each service has a minimal `Dockerfile` in its directory. The compose file wires the inter-service URLs automatically (`SPRING_EMERGENCY_SERVICE_URL`, `AI_SERVICE_URL`, `MONGODB_URI`).
+
 ## Future scope roadmap
+
+### Phase 1 — Near-term
 
 | Feature | Status | Scaffolding |
 |---|---|---|
 | Offline emergency queueing | Partial — SMS foundation via telephony_fix | sos_service.dart triggerOfflineSOS |
-| Advanced AI crash models | Partial — pluggable interpreter slot | ai_service.dart + ai-service/app/main.py |
 | Community safety reporting | Partial — risk incident infrastructure | risk_incident_repository.js |
+
+### Phase 2 — Mid-term
+
+| Feature | Status | Scaffolding |
+|---|---|---|
+| Advanced AI crash models | Partial — pluggable interpreter slot | ai_service.dart + ai-service/app/main.py |
 | Live traffic + weather integration | Scaffolded | backend/services/traffic_weather_service.js |
 | OBD-II vehicle integration | Scaffolded | lib/core/services/obd_service.dart |
+
+### Phase 3 — Long-term
+
+| Feature | Status | Scaffolding |
+|---|---|---|
 | Emergency service (police/ambulance) dispatch | Scaffolded | EmergencyDispatchService.java |
+| Government emergency notification API | Planned | EmergencyDispatchService.java |
+| Multi-region data residency | Planned | — |
 
 ## Verification Status
 

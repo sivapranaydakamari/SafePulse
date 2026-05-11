@@ -3,7 +3,7 @@ const axios = require('axios');
 const SPRING_EMERGENCY_SERVICE_URL =
   process.env.SPRING_EMERGENCY_SERVICE_URL || 'http://localhost:8080';
 
-async function publishEmergencyEvent(event) {
+async function publishEmergencyEvent(event, { requestId } = {}) {
   const payload = {
     eventId: String(event.eventId),
     latitude: event.latitude,
@@ -14,10 +14,11 @@ async function publishEmergencyEvent(event) {
     timestamp: event.timestamp || new Date().toISOString(),
   };
 
+  const headers = requestId ? { 'X-Request-ID': requestId } : {};
   const response = await axios.post(
     `${SPRING_EMERGENCY_SERVICE_URL}/api/sos`,
     payload,
-    { timeout: 2500 }
+    { timeout: 2500, headers }
   );
   return response.data;
 }

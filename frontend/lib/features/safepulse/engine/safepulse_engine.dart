@@ -1,5 +1,6 @@
 // lib/features/safepulse/engine/safepulse_engine.dart
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import '../services/ai_service.dart';
 import '../services/alert_service.dart';
@@ -168,7 +169,15 @@ class SafePulseEngine {
     sensorService.onRawData = (data) {
       pingSensor();
       if (healthState != EngineHealthState.degraded) {
-        aiService.addData(data);
+        try {
+          aiService.addData(data);
+        } catch (e, st) {
+          debugPrint('[SafePulseEngine] aiService.addData error: $e\n$st');
+          log('AI pipeline error — scheduling sensor recovery.', level: LogLevel.warning);
+          if (_isRunning) {
+            Future.delayed(const Duration(seconds: 3), _recoverSensors);
+          }
+        }
       }
     };
 

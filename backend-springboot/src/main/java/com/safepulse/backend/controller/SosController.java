@@ -22,7 +22,10 @@ public class SosController {
     // TODO (future scope): inject EmergencyDispatchService and call dispatchEmergency()
     // when SOS severity >= 4 or user has opted into government emergency notification.
     @PostMapping
-    public ResponseEntity<EmergencyEventResponse> receiveSOS(@RequestBody SosRequest request) {
+    public ResponseEntity<EmergencyEventResponse> receiveSOS(
+            @RequestBody SosRequest request,
+            @RequestHeader(value = "X-Request-ID", required = false) String requestId) {
+        System.out.println("[SosController] receiveSOS requestId=" + requestId);
         return ResponseEntity.status(201)
                 .body(EmergencyEventResponse.from(emergencyResponseService.createEvent(request)));
     }

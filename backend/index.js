@@ -6,7 +6,9 @@ const http      = require('http');
 const https     = require('https');
 const fs        = require('fs');
 const helmet    = require('helmet');
+const morgan    = require('morgan');
 const rateLimit = require('express-rate-limit');
+const requestId = require('./middleware/requestId');
 const { createRealtimeHub } = require('./services/realtime_hub');
 
 dotenv.config();
@@ -41,19 +43,18 @@ const authLimiter = rateLimit({
 //     a tighter limit on auth endpoints (authLimiter).
 //   • Authentication   — JWT validation via requireAuth middleware before any
 //     protected route handler executes.
-//   • Request logging  — structured timestamp + method + URL logged below.
+//   • Request logging  — structured JSON via morgan; X-Request-ID correlation.
 //   • Routing          — all /api/* paths fanned out to service-specific routers.
+app.use(requestId);
 app.use(helmet());
 app.use(globalLimiter);
 app.use(cors());
 app.use(express.json());
-app.use((req, res, next) => {
-  console.log(
-    `[${new Date().toISOString()}] ${req.method} ${req.url}`
-  );
-  if (req.method !== 'GET') console.log('  Body:', req.body);
-  next();
-});
+app.use(
+  process.env.NODE_ENV === 'production'
+    ? morgan('combined')
+    : morgan('dev')
+);
 
 // Routes
 app.use('/api/auth', authLimiter, require('./routes/auth'));
@@ -84,19 +85,22 @@ app.get('/health', (req, res) => {
   });
 });
 
+const _log = (level, event, extra = {}) =>
+  console.log(JSON.stringify({ level, service: 'safepulse-gateway', event, ...extra }));
+
 // MongoDB — server only starts after a successful connection
 mongoose.connect(process.env.MONGODB_URI)
   .then(async () => {
-    console.log('✅ MongoDB connected');
+    _log('info', 'mongodb_connected');
     try {
       const User = require('./models/User');
       await User.collection.dropIndex('phone_1');
-      console.log('Refreshed phone index');
+      _log('info', 'index_refreshed', { index: 'phone_1' });
     } catch (e) { }
     try {
       const User = require('./models/User');
       await User.collection.dropIndex('email_1');
-      console.log('Refreshed email index');
+      _log('info', 'index_refreshed', { index: 'email_1' });
     } catch (e) { }
 
     // === TLS / HTTPS SERVER ===
@@ -109,26 +113,25 @@ mongoose.connect(process.env.MONGODB_URI)
         cert: fs.readFileSync(process.env.TLS_CERT_PATH || './certs/server.crt'),
       };
       https.createServer(tlsOptions, app).listen(process.env.HTTPS_PORT || 443, () => {
-        console.log(`[Gateway] HTTPS server running on port ${process.env.HTTPS_PORT || 443}`);
+        _log('info', 'server_start', { port: process.env.HTTPS_PORT || 443, protocol: 'https', env: process.env.NODE_ENV });
       });
     } else {
       // Bind to 0.0.0.0 so physical devices on the LAN can connect
       server.listen(PORT, '0.0.0.0', () => {
-        console.log(`SafePulse API listening on 0.0.0.0:${PORT}`);
-        console.log(`SafePulse realtime WebSocket ready at ws://0.0.0.0:${PORT}/ws/tracking`);
+        _log('info', 'server_start', { port: PORT, protocol: 'http', env: process.env.NODE_ENV });
+        _log('info', 'websocket_ready', { url: `ws://0.0.0.0:${PORT}/ws/tracking` });
       }).on('error', (err) => {
         if (err.code === 'EADDRINUSE') {
-          console.error(`❌ Port ${PORT} is already in use. Kill the other process first:`);
-          console.error(`   Windows: netstat -ano | findstr :${PORT}  then  taskkill /PID <pid> /F`);
+          _log('error', 'port_in_use', { port: PORT, hint: `netstat -ano | findstr :${PORT}` });
           process.exit(1);
         } else {
-          console.error('Server error:', err);
+          _log('error', 'server_error', { message: err.message });
           process.exit(1);
         }
       });
     }
   })
   .catch(err => {
-    console.error('❌ MongoDB connection failed. Server will not start:', err.message);
+    _log('error', 'mongodb_connection_failed', { message: err.message });
     process.exit(1);
   });
