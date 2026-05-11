@@ -20,24 +20,13 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
   final String _selectedCountryCode = "+91";
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isEmailOnlyMode = true;
 
   void _handleLogin() async {
     final email = _emailController.text.trim();
-    final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
     
-    if (name.isEmpty || name.length < 2) {
-      setState(() => _errorMessage = "Please enter your full name");
-      return;
-    }
-
     if (email.isEmpty || !email.contains('@')) {
       setState(() => _errorMessage = "Please enter a valid email address");
-      return;
-    }
-
-    if (phone.length != 10 || !RegExp(r'^[0-9]+$').hasMatch(phone)) {
-      setState(() => _errorMessage = "Enter a valid 10-digit mobile number");
       return;
     }
 
@@ -46,28 +35,74 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
       _errorMessage = null;
     });
 
-    final fullPhoneNumber = "$_selectedCountryCode$phone";
     final authProvider = context.read<AuthProvider>();
 
-    // Use AuthProvider instead of direct ApiService call
-    final result = await authProvider.sendEmailOtp(email, name: name, phone: fullPhoneNumber);
+    if (_isEmailOnlyMode) {
+      // Try to send OTP with just the email (assumes existing user)
+      final result = await authProvider.sendEmailOtp(email);
+      
+      if (mounted) {
+        setState(() => _isLoading = false);
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-
-      if (result['success'] == true) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => OtpScreen(
-              email: email,
+        if (result['success'] == true) {
+          // Existing user, OTP sent successfully
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OtpScreen(email: email),
             ),
-          ),
-        );
-      } else {
+          );
+        } else if (result['error'] != null && result['error'].toString().contains('Name and Phone')) {
+          // New user, backend requires name and phone
+          setState(() {
+            _isEmailOnlyMode = false;
+            _errorMessage = "New email detected. Please complete registration.";
+          });
+        } else {
+          setState(() {
+            _errorMessage = result['error'] ?? "Failed to verify email.";
+          });
+        }
+      }
+    } else {
+      // Full registration mode
+      final name = _nameController.text.trim();
+      final phone = _phoneController.text.trim();
+
+      if (name.isEmpty || name.length < 2) {
         setState(() {
-          _errorMessage = result['error'] ?? "Failed to send verification email.";
+          _errorMessage = "Please enter your full name";
+          _isLoading = false;
         });
+        return;
+      }
+
+      if (phone.length != 10 || !RegExp(r'^[0-9]+$').hasMatch(phone)) {
+        setState(() {
+          _errorMessage = "Enter a valid 10-digit mobile number";
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final fullPhoneNumber = "$_selectedCountryCode$phone";
+      final result = await authProvider.sendEmailOtp(email, name: name, phone: fullPhoneNumber);
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+
+        if (result['success'] == true) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OtpScreen(email: email),
+            ),
+          );
+        } else {
+          setState(() {
+            _errorMessage = result['error'] ?? "Failed to send verification email.";
+          });
+        }
       }
     }
   }
@@ -87,7 +122,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Registration",
+                      _isEmailOnlyMode ? "Login / Register" : "Registration",
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
@@ -95,7 +130,9 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "Complete your profile to receive a verification code",
+                      _isEmailOnlyMode 
+                          ? "Enter your email to receive a verification code" 
+                          : "Complete your profile to finish registration",
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.textSecondary,
                           ),
@@ -104,42 +141,10 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              // 1. Name Field
+              
+              // 1. Email Field (Always visible)
               FadeInLeft(
                 delay: const Duration(milliseconds: 200),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.surface),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person_outline, color: AppColors.textPrimary, size: 20),
-                      const SizedBox(width: 16),
-                      Container(height: 24, width: 1, color: AppColors.surface),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: _nameController,
-                          textCapitalization: TextCapitalization.words,
-                          style: const TextStyle(color: AppColors.textPrimary),
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            hintText: "Full Name",
-                            hintStyle: TextStyle(color: AppColors.textSecondary),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // 2. Email Field
-              FadeInLeft(
-                delay: const Duration(milliseconds: 300),
                 child: Container(
                   decoration: BoxDecoration(
                     color: AppColors.cardBg,
@@ -158,10 +163,11 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           style: const TextStyle(color: AppColors.textPrimary),
-                          decoration: const InputDecoration(
+                          readOnly: !_isEmailOnlyMode, // Lock email if they are completing registration
+                          decoration: InputDecoration(
                             border: InputBorder.none,
                             hintText: "Email Address",
-                            hintStyle: TextStyle(color: AppColors.textSecondary),
+                            hintStyle: const TextStyle(color: AppColors.textSecondary),
                           ),
                         ),
                       ),
@@ -169,39 +175,76 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              // 3. Phone Field
-              FadeInLeft(
-                delay: const Duration(milliseconds: 400),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.surface),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      Text(_selectedCountryCode, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 12),
-                      Container(height: 24, width: 1, color: AppColors.surface),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          style: const TextStyle(color: AppColors.textPrimary),
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            hintText: "Phone Number",
-                            hintStyle: TextStyle(color: AppColors.textSecondary),
+              
+              if (!_isEmailOnlyMode) ...[
+                const SizedBox(height: 16),
+                // 2. Name Field
+                FadeInLeft(
+                  delay: const Duration(milliseconds: 300),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBg,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.surface),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.person_outline, color: AppColors.textPrimary, size: 20),
+                        const SizedBox(width: 16),
+                        Container(height: 24, width: 1, color: AppColors.surface),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextField(
+                            controller: _nameController,
+                            textCapitalization: TextCapitalization.words,
+                            style: const TextStyle(color: AppColors.textPrimary),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              hintText: "Full Name",
+                              hintStyle: TextStyle(color: AppColors.textSecondary),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 16),
+
+                // 3. Phone Field
+                FadeInLeft(
+                  delay: const Duration(milliseconds: 400),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBg,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.surface),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        Text(_selectedCountryCode, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 12),
+                        Container(height: 24, width: 1, color: AppColors.surface),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            style: const TextStyle(color: AppColors.textPrimary),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              hintText: "Phone Number",
+                              hintStyle: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               if (_errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8, left: 16),
