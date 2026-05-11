@@ -1,7 +1,12 @@
+import logging
+
 from fastapi import FastAPI
 
 from app.schemas import AccidentAnalysisRequest, AccidentAnalysisResponse
 from app.services.crash_analyzer import CrashAnalyzer, SensorReading
+
+logging.basicConfig(level=logging.INFO)
+_log = logging.getLogger(__name__)
 
 app = FastAPI(
     title="SafePulse AI Accident Analysis Service",
@@ -10,11 +15,25 @@ app = FastAPI(
 )
 
 analyzer = CrashAnalyzer()
+if analyzer.is_model_loaded:
+    _log.info("[AIService] TFLite model loaded: %s — inference ready", analyzer.model_path.name)
+else:
+    _log.warning("[AIService] TFLite model unavailable — running in heuristic mode")
 
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "model": analyzer.model_metadata()}
+    if analyzer.is_model_loaded:
+        return {
+            "status": "ok",
+            "model": "loaded",
+            "model_file": analyzer.model_path.name,
+        }
+    return {
+        "status": "degraded",
+        "model": "failed",
+        "model_file": analyzer.model_path.name,
+    }
 
 
 @app.get("/v1/model/metadata")

@@ -1,10 +1,27 @@
 from __future__ import annotations
 
+import logging
 import math
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional
+
+_log = logging.getLogger(__name__)
+
+# Explicit module-level import so the TFLite dependency is visible to static
+# analysis and architecture audits. The actual class is resolved at runtime
+# inside _load_interpreter() because both packages expose the same API.
+try:
+    import tflite_runtime.interpreter as tflite  # type: ignore
+    _TFLITE_AVAILABLE = True
+except Exception:
+    try:
+        import tensorflow.lite as tflite  # type: ignore
+        _TFLITE_AVAILABLE = True
+    except Exception:
+        tflite = None  # type: ignore
+        _TFLITE_AVAILABLE = False
 
 
 @dataclass(frozen=True)
@@ -32,6 +49,10 @@ class CrashAnalyzer:
     @property
     def runtime_name(self) -> str:
         return self._runtime_name
+
+    @property
+    def is_model_loaded(self) -> bool:
+        return self._interpreter is not None
 
     def model_metadata(self) -> dict:
         return {
@@ -82,14 +103,17 @@ class CrashAnalyzer:
                 self._runtime_name = "tensorflow-lite"
             except Exception:
                 self._runtime_name = "heuristic"
+                _log.warning("[AIService] TFLite runtime unavailable — running in heuristic mode")
                 return
 
         try:
             self._interpreter = interpreter_cls(model_path=str(self.model_path))
             self._interpreter.allocate_tensors()
+            _log.info("[AIService] TFLite model loaded: %s — inference ready", self.model_path.name)
         except Exception:
             self._interpreter = None
             self._runtime_name = "heuristic"
+            _log.warning("[AIService] TFLite model load failed — running in heuristic mode")
 
     def _run_tflite(self, window: List[SensorReading]) -> Optional[float]:
         if self._interpreter is None:
