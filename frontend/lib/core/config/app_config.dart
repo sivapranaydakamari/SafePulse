@@ -21,4 +21,14 @@ class AppConfig {
   static const String routeSuggestEndpoint = '/api/routes/suggest';
   static String get routeSuggestUrl => '$baseUrl$routeSuggestEndpoint';
 
+  static String get realtimeUrl {
+    final uri = Uri.parse(baseUrl);
+    return uri
+        .replace(
+          scheme: uri.scheme == 'https' ? 'wss' : 'ws',
+          path: '/ws/tracking',
+          query: '',
+        )
+        .toString();
+  }
 }
