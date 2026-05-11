@@ -5,6 +5,8 @@ import 'dart:io';
 import '../config/app_config.dart';
 import 'api_service.dart';
 
+enum TrackingStatus { connected, failedNoToken, failedNetworkError }
+
 class RealtimeTrackingService {
   WebSocket? _socket;
   final _events = StreamController<Map<String, dynamic>>.broadcast();
@@ -14,27 +16,32 @@ class RealtimeTrackingService {
 
   bool get isConnected => _socket?.readyState == WebSocket.open;
 
-  Future<void> connect() async {
+  Future<TrackingStatus> connect() async {
     final token = await ApiService.getToken();
     if (token == null || token.isEmpty) {
-      throw StateError('Cannot open realtime tracking without an auth token');
+      return TrackingStatus.failedNoToken;
     }
 
-    final uri = Uri.parse(AppConfig.realtimeUrl)
-        .replace(queryParameters: {'token': token});
-    _socket = await WebSocket.connect(uri.toString());
-    _socket!.listen(
-      (raw) {
-        if (!_disposed) _events.add(jsonDecode(raw as String) as Map<String, dynamic>);
-      },
-      onError: (error) {
-        if (!_disposed) _events.add({'type': 'connection:error', 'error': '$error'});
-      },
-      onDone: () {
-        if (!_disposed) _events.add({'type': 'connection:closed'});
-      },
-      cancelOnError: true,
-    );
+    try {
+      final uri = Uri.parse(AppConfig.realtimeUrl)
+          .replace(queryParameters: {'token': token});
+      _socket = await WebSocket.connect(uri.toString());
+      _socket!.listen(
+        (raw) {
+          if (!_disposed) _events.add(jsonDecode(raw as String) as Map<String, dynamic>);
+        },
+        onError: (error) {
+          if (!_disposed) _events.add({'type': 'connection:error', 'error': '$error'});
+        },
+        onDone: () {
+          if (!_disposed) _events.add({'type': 'connection:closed'});
+        },
+        cancelOnError: true,
+      );
+      return TrackingStatus.connected;
+    } catch (e) {
+      return TrackingStatus.failedNetworkError;
+    }
   }
 
   void sendTrackingUpdate({

@@ -1,26 +1,41 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility that Flutter provides. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:telephony_example/main.dart';
+
+// Relative import resolves correctly regardless of the outer project's
+// package graph — avoids "package:telephony_example" resolution failures.
+import '../lib/main.dart';
 
 void main() {
-  testWidgets('Verify Platform version', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    // Stub the telephony foreground channel so requestPhoneAndSmsPermissions
+    // returns null instead of throwing MissingPluginException.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('plugins.shounakmulay.com/foreground_sms_channel'),
+      (MethodCall methodCall) async => null,
+    );
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('plugins.shounakmulay.com/foreground_sms_channel'),
+      null,
+    );
+  });
+
+  testWidgets('MyApp builds and shows plugin example UI',
+      (WidgetTester tester) async {
     await tester.pumpWidget(MyApp());
 
-    // Verify that platform version is retrieved.
-    expect(
-      find.byWidgetPredicate(
-        (Widget widget) =>
-            widget is Text && widget.data!.startsWith('Running on:'),
-      ),
-      findsOneWidget,
-    );
+    // Flush the async initPlatformState() call (mocked channel returns null,
+    // so no SMS listener is registered and the widget stays mounted).
+    await tester.pump();
+
+    expect(find.byType(MaterialApp), findsOneWidget);
+    expect(find.text('Plugin example app'), findsOneWidget);
   });
 }

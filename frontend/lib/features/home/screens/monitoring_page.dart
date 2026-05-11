@@ -2,10 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 // import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/services/realtime_tracking_service.dart';
 import 'driving_mode_page.dart';
 
 class MonitoringPage extends StatelessWidget {
-  const MonitoringPage({super.key});
+  final bool isAiModelLoaded;
+  final TrackingStatus trackingStatus;
+
+  const MonitoringPage({
+    super.key,
+    this.isAiModelLoaded = true,
+    this.trackingStatus = TrackingStatus.connected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +43,50 @@ class MonitoringPage extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            if (!isAiModelLoaded)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade700,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Running in basic mode — AI model unavailable.',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (trackingStatus == TrackingStatus.failedNoToken)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade700,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.white, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Real-time sync unavailable — running in local mode.',
+                        style: TextStyle(color: Colors.white, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // Header: Member Name
             FadeInDown(
               child: const Row(
