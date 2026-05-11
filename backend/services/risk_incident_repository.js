@@ -80,6 +80,21 @@ async function getRiskZonesForRoutes(routes) {
   return uniqueZones([...databaseZones, ...seedZones]);
 }
 
+async function listRiskZones() {
+  const seedZones = readSeedRiskZones();
+  if (mongoose.connection.readyState !== 1) return seedZones;
+
+  const incidents = await RiskIncident.find({
+    active: true,
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+  }).lean();
+
+  return uniqueZones([
+    ...incidents.map(normalizeZone).filter(Boolean),
+    ...seedZones,
+  ]);
+}
+
 async function createRiskIncident(payload) {
   const lat = Number(payload.lat);
   const lng = Number(payload.lng);
@@ -108,6 +123,7 @@ async function createRiskIncident(payload) {
 module.exports = {
   createRiskIncident,
   getRiskZonesForRoutes,
+  listRiskZones,
   normalizeZone,
   readSeedRiskZones,
 };

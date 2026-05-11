@@ -5,6 +5,7 @@ import '../services/ai_service.dart';
 import '../services/alert_service.dart';
 import '../../../core/repositories/sos_repository.dart';
 import '../../../core/services/location_service.dart';
+import '../../../core/services/realtime_tracking_service.dart';
 import '../services/sensor_service.dart';
 import '../services/sos_service.dart';
 import '../services/warning_service.dart';
@@ -32,6 +33,7 @@ class SafePulseEngine {
   final AIService aiService = AIService();
   final SensorService sensorService = SensorService();
   final LocationService locationService = LocationService();
+  final RealtimeTrackingService realtimeTrackingService = RealtimeTrackingService();
   final AlertService alertService = AlertService();
   late final WarningService warningService;
   late final SosService sosService;
@@ -139,9 +141,17 @@ class SafePulseEngine {
 
     // Bind event streams
     locationService.onSpeedUpdate = (speedMs) {
+      aiService.currentSpeedKmh = speedMs * 3.6;
       speedStream.add(speedMs);
       serviceInstance?.invoke('speed', {'speed': speedMs});
       warningService.handleSpeed(speedMs);
+      final position = locationService.lastValidPosition;
+      realtimeTrackingService.sendTrackingUpdate(
+        speed: speedMs,
+        isPhoneOn: true,
+        lat: position?.latitude,
+        lng: position?.longitude,
+      );
     };
 
     warningService.onDistractionUpdate = (seconds) {
@@ -210,6 +220,7 @@ class SafePulseEngine {
 
     sensorService.start();
     locationService.startSpeedMonitoring();
+    unawaited(_connectRealtimeTracking());
 
     _watchdogTimer?.cancel();
     _watchdogTimer = Timer.periodic(
@@ -329,6 +340,7 @@ class SafePulseEngine {
     _updateState(EngineState.idle);
     await sensorService.stop();
     locationService.stop();
+    await realtimeTrackingService.disconnect();
     log("🛑 AI Dashcam STOPPED.");
   }
 
@@ -376,5 +388,15 @@ class SafePulseEngine {
 
     aiService.dispose();
     warningService.dispose();
+    unawaited(realtimeTrackingService.dispose());
+  }
+
+  Future<void> _connectRealtimeTracking() async {
+    try {
+      await realtimeTrackingService.connect();
+      log("Realtime WebSocket tracking connected.");
+    } catch (e) {
+      log("Realtime WebSocket unavailable: $e", level: LogLevel.warning);
+    }
   }
 }

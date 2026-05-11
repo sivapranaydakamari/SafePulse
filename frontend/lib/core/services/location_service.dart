@@ -12,6 +12,7 @@ class LocationService {
   double _prevSpeedMs = 0.0;
 
   double? get currentSpeedMs => _prevSpeedMs;
+  Position? get lastValidPosition => _lastValidPosition;
 
   static Future<Position> getCurrentLocation() async {
     bool serviceEnabled;

@@ -8,21 +8,10 @@ jest.mock('@mapbox/polyline', () => ({
   decode: jest.fn().mockReturnValue([[10, 10]])
 }));
 
-jest.mock('../services/route_scoring_updated', () => ({
-  RouteScoring: class {
-    async scoreRoutes(routes) {
-      return routes.map(r => ({
-        ...r,
-        routeId: r.id,
-        safetyScore: 85,
-        safetyLevel: 'safe',
-        riskScore: 15,
-        breakdown: {},
-        warnings: [],
-        recommendations: []
-      }));
-    }
-  }
+jest.mock('../services/risk_incident_repository', () => ({
+  getRiskZonesForRoutes: jest.fn().mockResolvedValue([
+    { lat: 10, lng: 10, radiusM: 1000, severity: 90, label: 'Test risk zone' }
+  ])
 }));
 
 jest.mock('../middleware/auth', () => ({

@@ -2,9 +2,16 @@ const express = require('express');
 const request = require('supertest');
 const sosRoutes = require('../routes/sos');
 
-jest.mock('../models/SOS', () => ({
-  findById: jest.fn()
-}));
+jest.mock('../models/SOS', () => {
+  function MockSOS(payload) {
+    Object.assign(this, payload);
+    this._id = 'sos_123';
+    this.contactsNotified = payload.contactsNotified || [];
+    this.save = jest.fn().mockResolvedValue(this);
+  }
+  MockSOS.findById = jest.fn();
+  return MockSOS;
+});
 
 jest.mock('../models/User', () => ({
   findById: jest.fn(),
@@ -14,6 +21,10 @@ jest.mock('../models/User', () => ({
 jest.mock('../services/notification_service', () => ({
   sendSMS: jest.fn().mockResolvedValue(true),
   sendPushNotification: jest.fn().mockResolvedValue(true)
+}));
+
+jest.mock('../services/emergency_event_client', () => ({
+  publishEmergencyEvent: jest.fn().mockResolvedValue({ eventId: 'spring_123' })
 }));
 
 jest.mock('../middleware/auth', () => ({
@@ -44,6 +55,29 @@ describe('SOS Routes', () => {
     User.findById.mockResolvedValueOnce(null);
     const res = await request(app).post('/api/sos/start').send({ lat: 10, lng: 10 });
     expect(res.statusCode).toBe(404);
+  });
+
+  it('POST /api/sos - creates gateway SOS and syncs Spring emergency event', async () => {
+    const user = {
+      _id: 'mock_user_id',
+      name: 'Test User',
+      emergencyContacts: [{ name: 'Guardian', phone: '+911234567890' }]
+    };
+    User.findById.mockResolvedValueOnce(user);
+    User.find.mockReturnValueOnce({
+      select: jest.fn().mockResolvedValueOnce([])
+    });
+
+    const res = await request(app).post('/api/sos').send({
+      lat: 10,
+      lng: 10,
+      severity: 'HIGH',
+      eventId: 'event-1'
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.springEmergencySync).toBe(true);
   });
 
   it('POST /api/sos/cancel - sos not found', async () => {

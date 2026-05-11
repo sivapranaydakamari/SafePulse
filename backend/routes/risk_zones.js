@@ -5,7 +5,7 @@ const riskIncidentRepository = require('../services/risk_incident_repository');
 
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const riskZones = riskIncidentRepository.readSeedRiskZones();
+    const riskZones = await riskIncidentRepository.listRiskZones();
     res.json({ success: true, count: riskZones.length, riskZones });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to load risk zones' });

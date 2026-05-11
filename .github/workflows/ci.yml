@@ -20,6 +20,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm test
+      - run: npm run test:coverage
 
   springboot-emergency-service:
     runs-on: ubuntu-latest
