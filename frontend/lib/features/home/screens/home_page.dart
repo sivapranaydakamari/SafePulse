@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 
 import '../../../core/services/location_service.dart';
 import '../../../core/repositories/user_repository.dart';
@@ -93,8 +95,46 @@ class _HomeContentViewState extends State<HomeContentView> {
     super.initState();
     _userRepo = context.read<UserRepository>();
     _loadUserId();
+    _requestPermissions();
     _startLocationUpdates();
     _registerFCMToken();
+  }
+
+  Future<void> _requestPermissions() async {
+    // 1. Request Core Permissions
+    await [
+      Permission.location,
+      Permission.notification,
+      Permission.sms,
+      Permission.phone,
+      Permission.contacts,
+    ].request();
+
+    // 2. Background Location
+    if (await Permission.location.isGranted) {
+      await Permission.locationAlways.request();
+    }
+
+    // 3. Ignore Battery Optimizations
+    if (await Permission.ignoreBatteryOptimizations.isDenied) {
+      await Permission.ignoreBatteryOptimizations.request();
+    }
+
+    // 4. Ensure AI monitoring is synced with settings and started
+    final prefs = await SharedPreferences.getInstance();
+    bool shouldMonitor = prefs.getBool('crash_detection') ?? true;
+    if (prefs.get('isMonitoring') == null) {
+      await prefs.setBool('isMonitoring', shouldMonitor);
+    } else {
+      shouldMonitor = prefs.getBool('isMonitoring') ?? false;
+    }
+    
+    if (shouldMonitor) {
+      final service = FlutterBackgroundService();
+      if (!(await service.isRunning())) {
+        await service.startService();
+      }
+    }
   }
 
   @override

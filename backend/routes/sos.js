@@ -72,6 +72,20 @@ router.post('/start', requireAuth, async (req, res) => {
     sos.contactsNotified = sos.contactsNotified.map(c => ({ ...c.toObject(), status: 'SENT' }));
     await sos.save();
 
+    const realtimeHub = req.app.get('realtimeHub');
+    if (realtimeHub?.isEnabled) {
+      realtimeHub.broadcastSafetyEvent({
+        type: 'circle:sos-alert',
+        userIds: req.body.circleMemberIds || [],
+        data: {
+          sosId: sos._id,
+          victimId: userId,
+          location: { lat, lng, address: address || 'Emergency Location' },
+          nearbyCount: nearbyUsers.length,
+        },
+      });
+    }
+
     res.status(201).json({
       success: true,
       sosId: sos._id,

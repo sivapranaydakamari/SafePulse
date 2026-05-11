@@ -8,35 +8,29 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const polyline = require('@mapbox/polyline');
 const { RouteScoring } = require('../services/route_scoring_updated');
+const { requireAuth } = require('../middleware/auth');
 
 const routeScoring = new RouteScoring();
 
+function isValidCoordinatePair(point) {
+  return Number.isFinite(Number(point?.lat)) && Number.isFinite(Number(point?.lng));
+}
+
 // Removed ORS API key, using public OSRM
 
-/**
- * POST /api/routes/suggest
- * Get route suggestions with dynamic safety scoring
- * 
- * Body: {
- *   start: { lat: number, lng: number },
- *   destination: { lat: number, lng: number },
- *   alternatives: number (optional, default 3)
- * }
- */
 router.post('/suggest', async (req, res) => {
     try {
         const { start, destination, alternatives = 3 } = req.body;
 
-        if (!start?.lat || !start?.lng || !destination?.lat || !destination?.lng) {
+        if (!isValidCoordinatePair(start) || !isValidCoordinatePair(destination)) {
             return res.status(400).json({
-                error: 'Start and destination coordinates are required',
-                required: {
-                    start: { lat: 'number', lng: 'number' },
-                    destination: { lat: 'number', lng: 'number' }
-                }
+                error: 'Start and destination coordinates (lat, lng) are required and must be valid numbers',
             });
         }
+
+
 
         console.log(`\n🗺️  Route request: [${start.lat}, ${start.lng}] → [${destination.lat}, ${destination.lng}]`);
 
@@ -118,6 +112,7 @@ router.post('/suggest', async (req, res) => {
             message: error.message
         });
     }
+
 });
 
 /**

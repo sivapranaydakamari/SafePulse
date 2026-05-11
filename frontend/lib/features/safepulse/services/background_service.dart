@@ -25,6 +25,12 @@ void onStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
 
   final prefs = await SharedPreferences.getInstance();
+  
+  // Sync crash_detection default to isMonitoring if not set
+  if (prefs.get('isMonitoring') == null) {
+    await prefs.setBool('isMonitoring', prefs.getBool('crash_detection') ?? true);
+  }
+
   if (!(prefs.getBool("isMonitoring") ?? false)) {
     service.stopSelf();
     return;
@@ -228,7 +234,7 @@ class BackgroundServiceHelper {
     await service.configure(
       androidConfiguration: AndroidConfiguration(
         onStart: onStart,
-        autoStart: false,
+        autoStart: true,
         isForegroundMode: true,
         notificationChannelId: 'safepulse_silent_v4',
         initialNotificationTitle: '🛡️ SafePulse AI Active',
@@ -236,7 +242,7 @@ class BackgroundServiceHelper {
         foregroundServiceNotificationId: 888,
       ),
       iosConfiguration: IosConfiguration(
-        autoStart: false,
+        autoStart: true,
         onForeground: onStart,
       ),
     );
