@@ -1,3 +1,5 @@
+// Future scope: this repository will serve the CommunityReportService in the Flutter app.
+// See frontend/lib/core/services/community_report_service.dart for the planned interface.
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');

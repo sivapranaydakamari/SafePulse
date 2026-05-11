@@ -15,6 +15,9 @@ class SosService {
 
   List<String> emergencyContacts = [];
 
+  /// Public read-only view of loaded emergency contacts (for testing and diagnostics).
+  List<String> get contacts => emergencyContacts;
+
   // Emergency contacts must be configured by the user in Settings.
   // No hardcoded fallback — sending SOS to unknown numbers is a production safety risk.
   Future<void> _loadContacts() async {
@@ -31,6 +34,10 @@ class SosService {
   Function()? onCallReturned;
   Function(List<String> contacts, String payload)? onEmergencySOS;
   bool _isAwaitingCallReturn = false;
+
+  /// Public wrapper for use in tests and diagnostics. Production code calls
+  /// _loadContacts() internally via triggerOfflineSOS.
+  Future<void> loadContacts() => _loadContacts();
 
   Future<void> triggerHybridSOS({
     required double lat,
@@ -62,6 +69,8 @@ class SosService {
     );
   }
 
+  // TODO (future scope): replace direct SMS with LocalQueueService.enqueueSOSEvent()
+  // for reliable offline delivery with persistence and retry. See local_queue_service.dart.
   Future<void> triggerOfflineSOS(
     double lat,
     double lng, {

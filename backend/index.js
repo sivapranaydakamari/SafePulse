@@ -3,6 +3,8 @@ const mongoose  = require('mongoose');
 const cors      = require('cors');
 const dotenv    = require('dotenv');
 const http      = require('http');
+const https     = require('https');
+const fs        = require('fs');
 const helmet    = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { createRealtimeHub } = require('./services/realtime_hub');
@@ -97,20 +99,34 @@ mongoose.connect(process.env.MONGODB_URI)
       console.log('Refreshed email index');
     } catch (e) { }
 
-    // Bind to 0.0.0.0 so physical devices on the LAN can connect
-    server.listen(PORT, '0.0.0.0', () => {
-      console.log(`SafePulse API listening on 0.0.0.0:${PORT}`);
-      console.log(`SafePulse realtime WebSocket ready at ws://0.0.0.0:${PORT}/ws/tracking`);
-    }).on('error', (err) => {
-      if (err.code === 'EADDRINUSE') {
-        console.error(`❌ Port ${PORT} is already in use. Kill the other process first:`);
-        console.error(`   Windows: netstat -ano | findstr :${PORT}  then  taskkill /PID <pid> /F`);
-        process.exit(1);
-      } else {
-        console.error('Server error:', err);
-        process.exit(1);
-      }
-    });
+    // === TLS / HTTPS SERVER ===
+    // In production, set USE_HTTPS=true and provide TLS cert paths via environment variables.
+    // In development, the server runs on plain HTTP (USE_HTTPS defaults to false).
+    // TLS termination can also be handled externally by nginx — see TLS_SETUP.md.
+    if (process.env.USE_HTTPS === 'true') {
+      const tlsOptions = {
+        key:  fs.readFileSync(process.env.TLS_KEY_PATH  || './certs/server.key'),
+        cert: fs.readFileSync(process.env.TLS_CERT_PATH || './certs/server.crt'),
+      };
+      https.createServer(tlsOptions, app).listen(process.env.HTTPS_PORT || 443, () => {
+        console.log(`[Gateway] HTTPS server running on port ${process.env.HTTPS_PORT || 443}`);
+      });
+    } else {
+      // Bind to 0.0.0.0 so physical devices on the LAN can connect
+      server.listen(PORT, '0.0.0.0', () => {
+        console.log(`SafePulse API listening on 0.0.0.0:${PORT}`);
+        console.log(`SafePulse realtime WebSocket ready at ws://0.0.0.0:${PORT}/ws/tracking`);
+      }).on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          console.error(`❌ Port ${PORT} is already in use. Kill the other process first:`);
+          console.error(`   Windows: netstat -ano | findstr :${PORT}  then  taskkill /PID <pid> /F`);
+          process.exit(1);
+        } else {
+          console.error('Server error:', err);
+          process.exit(1);
+        }
+      });
+    }
   })
   .catch(err => {
     console.error('❌ MongoDB connection failed. Server will not start:', err.message);

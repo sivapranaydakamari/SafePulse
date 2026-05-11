@@ -20,6 +20,12 @@ if analyzer.is_model_loaded:
 else:
     _log.warning("[AIService] TFLite model unavailable — running in heuristic mode")
 
+_inference_stats: dict = {
+    "total_inferences": 0,
+    "crash_detections": 0,
+    "total_ms": 0.0,
+}
+
 
 @app.get("/health")
 def health() -> dict:
@@ -43,6 +49,7 @@ def model_metadata() -> dict:
 
 @app.post("/v1/accident/analyze", response_model=AccidentAnalysisResponse)
 def analyze_accident(payload: AccidentAnalysisRequest) -> dict:
+    import time as _time
     readings = [
         SensorReading(
             ax=sample.ax,
@@ -55,4 +62,23 @@ def analyze_accident(payload: AccidentAnalysisRequest) -> dict:
         )
         for sample in payload.samples
     ]
-    return analyzer.analyze(readings)
+    _start = _time.time()
+    result = analyzer.analyze(readings)
+    elapsed_ms = round((_time.time() - _start) * 1000, 2)
+    _inference_stats["total_inferences"] += 1
+    _inference_stats["total_ms"] += elapsed_ms
+    if result.get("crashDetected"):
+        _inference_stats["crash_detections"] += 1
+    return result
+
+
+@app.get("/ai/stats")
+def ai_stats() -> dict:
+    total = _inference_stats["total_inferences"]
+    avg_ms = round(_inference_stats["total_ms"] / total, 2) if total > 0 else 0.0
+    return {
+        "total_inferences": total,
+        "crash_detections": _inference_stats["crash_detections"],
+        "avg_inference_ms": avg_ms,
+        "model_status": "loaded" if analyzer.is_model_loaded else "fallback",
+    }

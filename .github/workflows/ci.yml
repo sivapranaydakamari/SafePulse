@@ -47,3 +47,18 @@ jobs:
         with:
           python-version: "3.11"
       - run: PYTHONPATH=$PWD python -m unittest discover -s tests
+
+  flutter-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: flutter-actions/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+          channel: stable
+      - name: Install Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Run Flutter tests
+        working-directory: frontend
+        run: flutter test

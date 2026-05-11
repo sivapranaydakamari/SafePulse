@@ -27,6 +27,8 @@ SafePulse uses a reviewable multi-service architecture:
 
 ### Node.js API
 
+Production deployment uses PM2 cluster mode (`ecosystem.config.js`) for load balancing across CPU cores.
+
 - `POST /api/auth/send-otp`
 - `POST /api/auth/verify-otp`
 - `POST /api/routes/suggest`
