@@ -6,11 +6,11 @@ class AppConfig {
   // static const String _localUrl = 'http://localhost:5001';
   
   // For real device on same network:
-  static const String _localUrl = 'http://10.212.213.130:5001';
+  static const String _localUrl = 'http://10.212.213.130:5002';
   // (Replace with your computer's local IP if it changes)
   
   // For production (deployed backend):
-  // static const String _localUrl = 'http://YOUR_SERVER_IP:5001';
+  // static const String _localUrl = 'http://YOUR_SERVER_IP:5002';
   
 
   static const String baseUrl = String.fromEnvironment(
