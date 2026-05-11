@@ -1,6 +1,8 @@
 // lib/features/safepulse/services/ai_service.dart
+import 'dart:async';
 import 'dart:math';
 import 'package:tflite_flutter/tflite_flutter.dart';
+import '../../../core/services/api_service.dart';
 
 class AIService {
   Interpreter? _interpreter;
@@ -10,6 +12,7 @@ class AIService {
   Function(String message)? onLog;
   Function()? onInferenceAttempt;
   Function()? onInferenceCompleted;
+  double currentSpeedKmh = 0.0;
 
   bool _isProcessing = false;
   bool _resetting = false;
@@ -41,7 +44,7 @@ class AIService {
       if (!_isProcessing) {
         onLog?.call("⚠️ IMPACT: ${gForce.toStringAsFixed(1)} Gs. AI Analyzing...");
         print("AIService: IMPACT DETECTED! G-Force: ${gForce.toStringAsFixed(1)}");
-        _runAIAnalysis(List.from(_sensorBuffer), gForce);
+        unawaited(_runAIAnalysis(List.from(_sensorBuffer), gForce));
         if (!_resetting) {
           _sensorBuffer.clear();
         }
@@ -58,9 +61,16 @@ class AIService {
 
   int _recentSpikeCount = 0;
 
-  void _runAIAnalysis(List<List<double>> windowToAnalyze, double maxGForce) {
+  Future<void> _runAIAnalysis(List<List<double>> windowToAnalyze, double maxGForce) async {
     _isProcessing = true;
     onInferenceAttempt?.call();
+
+    final serverHandled = await _runServerAIAnalysis(windowToAnalyze);
+    if (serverHandled) {
+      _isProcessing = false;
+      onInferenceCompleted?.call();
+      return;
+    }
     
     if (_interpreter == null) {
       if (maxGForce > 3.5) { // Lowered to 3.5 for manual testing
@@ -115,5 +125,43 @@ class AIService {
 
   void dispose() {
     _interpreter?.close();
+  }
+
+  Future<bool> _runServerAIAnalysis(List<List<double>> windowToAnalyze) async {
+    try {
+      final samples = windowToAnalyze.map((data) {
+        return {
+          'ax': data[0],
+          'ay': data[1],
+          'az': data[2],
+          'gx': data.length > 3 ? data[3] : 0.0,
+          'gy': data.length > 4 ? data[4] : 0.0,
+          'gz': data.length > 5 ? data[5] : 0.0,
+          'speedKmh': currentSpeedKmh,
+        };
+      }).toList();
+
+      final response = await ApiService.analyzeAccidentWindow(samples: samples);
+      if (response['success'] != true || response['analysis'] is! Map) {
+        onLog?.call("AI service unavailable. Falling back to local crash model.");
+        return false;
+      }
+
+      final analysis = Map<String, dynamic>.from(response['analysis'] as Map);
+      final probability = (analysis['crashProbability'] as num?)?.toDouble() ?? 0.0;
+      final detected = analysis['crashDetected'] == true;
+      final modelUsed = analysis['modelUsed'] ?? 'server-ai';
+
+      if (detected) {
+        onLog?.call("Server AI confirmed crash via $modelUsed (${(probability * 100).toStringAsFixed(1)}%).");
+        onCrashDetected?.call(probability);
+      } else {
+        onLog?.call("Server AI filtered impact (${(probability * 100).toStringAsFixed(1)}%).");
+      }
+      return true;
+    } catch (e) {
+      onLog?.call("AI service error: $e. Falling back to local crash model.");
+      return false;
+    }
   }
 }

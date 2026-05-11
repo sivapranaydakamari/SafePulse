@@ -1,6 +1,11 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'safepulse_secret_key_123';
+function getJwtSecret() {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === 'test') return 'safepulse_test_secret';
+
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
 // verifies Bearer token in Authorization header.
 // Attaches req.userId for use in protected routes.
@@ -11,7 +16,7 @@ function requireAuth(req, res, next) {
   }
   const token = authHeader.slice(7);
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, getJwtSecret());
     req.userId = payload.userId;
     next();
   } catch (err) {
@@ -20,12 +25,12 @@ function requireAuth(req, res, next) {
 }
 
 function verifyToken(token) {
-  return jwt.verify(token, JWT_SECRET);
+  return jwt.verify(token, getJwtSecret());
 }
 
 // Generate a JWT for a user. Call after OTP verification.
 function signToken(userId) {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '30d' });
+  return jwt.sign({ userId }, getJwtSecret(), { expiresIn: '30d' });
 }
 
 module.exports = { requireAuth, signToken, verifyToken };

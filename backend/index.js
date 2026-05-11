@@ -3,6 +3,8 @@ const mongoose  = require('mongoose');
 const cors      = require('cors');
 const dotenv    = require('dotenv');
 const http      = require('http');
+const helmet    = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { createRealtimeHub } = require('./services/realtime_hub');
 
 dotenv.config();
@@ -13,6 +15,23 @@ const server = http.createServer(app);
 const realtimeHub = createRealtimeHub(server);
 app.set('realtimeHub', realtimeHub);
 
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'test' ? 1000 : 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: process.env.NODE_ENV === 'test' ? 1000 : 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many authentication attempts. Please try again later.' },
+});
+
+app.use(helmet());
+app.use(globalLimiter);
 app.use(cors());
 app.use(express.json());
 app.use((req, res, next) => {
@@ -41,7 +60,7 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch(err => console.error('MongoDB error:', err.message));
 
 // Routes
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/circle', require('./routes/circle'));
 app.use('/api/journey', require('./routes/journey'));
 app.use('/api/routes', require('./routes/route_routes'));
@@ -56,6 +75,14 @@ app.use('/api/risk-zones', require('./routes/risk_zones'));
 app.use('/api/ai',       require('./routes/ai'));
 
 app.get('/', (req, res) => res.send('SafePulse API v2 running'));
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'safepulse-api-gateway',
+    realtime: realtimeHub.isEnabled,
+    mongoReadyState: mongoose.connection.readyState,
+  });
+});
 
 // Bind to 0.0.0.0 so physical devices on the LAN can connect
 server.listen(PORT, '0.0.0.0', () => {

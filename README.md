@@ -21,6 +21,7 @@ SafePulse uses a reviewable multi-service architecture:
 - `backend/` - Node.js API gateway for auth, circles, route scoring, realtime WebSockets, alerts, and AI proxying.
 - `backend-springboot/` - Spring Boot emergency-event microservice with JPA persistence.
 - `ai-service/` - Python FastAPI accident-analysis microservice using TensorFlow Lite when available and a deterministic calibrated fallback.
+- `.github/workflows/ci.yml` - GitHub Actions workflow for Node.js, Spring Boot, and Python service tests.
 
 ## Key Services
 
@@ -33,7 +34,9 @@ SafePulse uses a reviewable multi-service architecture:
 - `POST /api/risk-zones`
 - `POST /api/ai/accident/analyze`
 - `POST /api/sos/start`
+- `POST /api/sos` - gateway alias used by the autonomous background SOS path
 - `WS /ws/tracking`
+- `GET /health`
 
 ### Spring Boot Emergency Service
 
@@ -101,12 +104,16 @@ Current automated checks:
 - Node.js backend: Jest route/service tests.
 - Spring Boot emergency service: JUnit/MockMvc/JPA tests.
 - Python AI service: crash analyzer unit tests.
+- GitHub Actions: runs the Node.js, Spring Boot, and Python checks on push/pull request.
 
 ## Production Readiness Notes
 
 - Keep secrets in environment variables, not source code.
+- `JWT_SECRET` is required outside test runs; tests use an isolated test secret only.
+- Node.js uses Helmet and rate limiting for API hardening.
 - Use a managed MongoDB deployment with geospatial indexes enabled.
 - Run the Spring Boot service with MySQL/PostgreSQL in production.
 - Host the Python AI service separately and set `AI_SERVICE_URL` in the Node backend.
+- Run the Spring Boot emergency service separately and set `SPRING_EMERGENCY_SERVICE_URL` in the Node backend.
 - Replace public OSRM calls with a self-hosted or paid routing provider before production traffic.
 - Use Firebase/Twilio production credentials only through secure environment configuration.

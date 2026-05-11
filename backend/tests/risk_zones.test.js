@@ -10,7 +10,7 @@ jest.mock('../middleware/auth', () => ({
 }));
 
 jest.mock('../services/risk_incident_repository', () => ({
-  readSeedRiskZones: jest.fn().mockReturnValue([
+  listRiskZones: jest.fn().mockResolvedValue([
     { id: 'zone-1', lat: 17, lng: 78, radiusM: 500, severity: 80, label: 'Test zone' }
   ]),
   createRiskIncident: jest.fn().mockResolvedValue({

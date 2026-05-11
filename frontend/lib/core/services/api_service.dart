@@ -478,11 +478,17 @@ class ApiService {
     };
 
     try {
+      final headers = await authHeaders();
       final response = await http
           .post(
-            Uri.parse("$baseUrl/api/sos"),
-            headers: {"Content-Type": "application/json"},
-            body: jsonEncode(payload),
+            Uri.parse("$baseUrl/api/sos/start"),
+            headers: headers,
+            body: jsonEncode({
+              'lat': lat,
+              'lng': lng,
+              'address': hasLocation ? 'AI crash detection' : 'AI crash detection - location unavailable',
+              ...payload,
+            }),
           )
           .timeout(const Duration(seconds: 5));
 

@@ -34,6 +34,7 @@ backend/yarn.lock
 # Env files
 .env
 .env.*
+!backend/.env.example
 
 # Firebase
 frontend/android/app/google-services.json

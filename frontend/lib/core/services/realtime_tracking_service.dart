@@ -8,6 +8,7 @@ import 'api_service.dart';
 class RealtimeTrackingService {
   WebSocket? _socket;
   final _events = StreamController<Map<String, dynamic>>.broadcast();
+  bool _disposed = false;
 
   Stream<Map<String, dynamic>> get events => _events.stream;
 
@@ -23,9 +24,15 @@ class RealtimeTrackingService {
         .replace(queryParameters: {'token': token});
     _socket = await WebSocket.connect(uri.toString());
     _socket!.listen(
-      (raw) => _events.add(jsonDecode(raw as String) as Map<String, dynamic>),
-      onError: (error) => _events.add({'type': 'connection:error', 'error': '$error'}),
-      onDone: () => _events.add({'type': 'connection:closed'}),
+      (raw) {
+        if (!_disposed) _events.add(jsonDecode(raw as String) as Map<String, dynamic>);
+      },
+      onError: (error) {
+        if (!_disposed) _events.add({'type': 'connection:error', 'error': '$error'});
+      },
+      onDone: () {
+        if (!_disposed) _events.add({'type': 'connection:closed'});
+      },
       cancelOnError: true,
     );
   }
@@ -66,7 +73,13 @@ class RealtimeTrackingService {
   }
 
   Future<void> dispose() async {
+    _disposed = true;
     await _socket?.close();
     await _events.close();
+  }
+
+  Future<void> disconnect() async {
+    await _socket?.close();
+    _socket = null;
   }
 }

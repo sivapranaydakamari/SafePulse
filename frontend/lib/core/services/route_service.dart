@@ -2,7 +2,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/route_models.dart';
-import '../config/api_config.dart';
+import '../config/app_config.dart';
+import 'api_service.dart';
 
 class RouteService {
   static const String osrmBaseUrl = 'http://router.project-osrm.org/route/v1';
@@ -18,11 +19,12 @@ class RouteService {
       print('🔍 Fetching routes from backend...');
       
       // Call your existing backend API
-      final url = Uri.parse(ApiConfig.routeSuggestUrl);
+      final url = Uri.parse(AppConfig.routeSuggestUrl);
+      final headers = await ApiService.authHeaders();
       
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: json.encode({
           'start': {
             'lat': startLat,
