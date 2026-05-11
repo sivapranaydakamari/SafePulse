@@ -27,7 +27,9 @@ router.get('/search', async (req, res) => {
       params,
       timeout: 10000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' 
+        'User-Agent': 'SafePulse/2.0 (safety-navigation-app; contact: naveenkumardasari6788@gmail.com)',
+        'Accept-Language': 'en-IN,en;q=0.9',
+        'Accept': 'application/json',
       }
     });
 

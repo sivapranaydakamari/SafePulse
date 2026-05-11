@@ -10,7 +10,17 @@ class SOSRepository {
   }) async {
     final result = await ApiService.startSOS(lat: lat, lng: lng, address: address);
     if (result != null && result['success'] == true && result['sosId'] != null) {
-      return await getStatus(result['sosId']);
+      // Build SOSEvent directly from the /start response — avoids a second
+      // network round-trip that was causing silent SOS failures.
+      return SOSEvent(
+        id: result['sosId'].toString(),
+        userId: '',
+        lat: lat,
+        lng: lng,
+        address: address ?? 'Emergency Location',
+        status: 'active',
+        createdAt: DateTime.now(),
+      );
     }
     return null;
   }

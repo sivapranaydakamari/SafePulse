@@ -255,7 +255,7 @@ class ApiService {
               'address': address ?? 'Emergency Location',
             }),
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 20));
 
       if (response.statusCode == 201) return jsonDecode(response.body);
       debugPrint('[SOS] start failed: ${response.body}');
