@@ -321,18 +321,7 @@ class _DrivingModePageState extends State<DrivingModePage> {
     );
   }
 
-  Widget _buildLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(color: AppColors.primary),
-          const SizedBox(height: 24),
-          const Text('Getting GPS lock...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
+  Widget _buildLoadingState() => const _DrivingLoadingState();
 
   Widget _buildMap() {
     return FlutterMap(
@@ -365,44 +354,15 @@ class _DrivingModePageState extends State<DrivingModePage> {
     );
   }
 
-  Widget _buildSafetyAiCard() {
-    final bool isDanger = _safetyStatus == SafetyStatus.danger;
-    return FadeInDown(
-      child: Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isDanger ? Colors.red.withOpacity(0.9) : AppColors.cardBg.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isDanger ? Colors.white : AppColors.surface),
-        ),
-        child: Row(
-          children: [
-            Icon(isDanger ? Icons.gpp_bad : Icons.gpp_good, color: isDanger ? Colors.white : AppColors.safe),
-            const SizedBox(width: 12),
-            Expanded(child: Text(_aiSafetyMessage, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13))),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _buildSafetyAiCard() => _SafetyAiCard(status: _safetyStatus, message: _aiSafetyMessage);
 
-  Widget _buildStatsBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppColors.cardBg.withOpacity(0.9), borderRadius: BorderRadius.circular(20)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _statItem('Speed', '${_currentSpeed.toStringAsFixed(0)} km/h', _currentSpeed > 80 ? Colors.red : Colors.white),
-          _statItem('ETA', _eta, Colors.white),
-          _statItem('Left', _distanceRemaining < 1000 ? '${_distanceRemaining.round()} m' : '${(_distanceRemaining / 1000).toStringAsFixed(1)} km', Colors.white),
-          _statItem('Risk', widget.selectedRoute['riskScore'].toString(), _routeColor),
-        ],
-      ),
-    );
-  }
+  Widget _buildStatsBar() => _StatsBar(
+    speed: _currentSpeed,
+    eta: _eta,
+    distanceRemaining: _distanceRemaining,
+    riskScore: widget.selectedRoute['riskScore'].toString(),
+    routeColor: _routeColor,
+  );
 
   Widget _buildControls() {
     return Positioned(
@@ -429,30 +389,7 @@ class _DrivingModePageState extends State<DrivingModePage> {
     );
   }
 
-  Widget _statItem(String label, String value, Color color) {
-    return Column(children: [
-      Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10)),
-      Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
-    ]);
-  }
-
-  Widget _buildAlertWidget(Map<String, dynamic> a) {
-    return FadeInLeft(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: (a['color'] as Color).withOpacity(0.9), borderRadius: BorderRadius.circular(14)),
-        child: Row(children: [
-          Icon(a['icon'] as IconData, color: Colors.white, size: 18),
-          const SizedBox(width: 10),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(a['title'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-            Text(a['sub'], style: const TextStyle(color: Colors.white70, fontSize: 11)),
-          ])),
-        ]),
-      ),
-    );
-  }
+  Widget _buildAlertWidget(Map<String, dynamic> a) => _AlertWidget(alert: a);
 
   Future<void> _triggerSOS() async {
     if (_isOpeningSOS) return;
@@ -463,5 +400,122 @@ class _DrivingModePageState extends State<DrivingModePage> {
       Navigator.push(context, MaterialPageRoute(builder: (context) => SOSActivePage(sosId: sosProvider.activeSos!.id, initialLocation: _currentPos)));
     }
     if (mounted) setState(() => _isOpeningSOS = false);
+  }
+}
+
+class _DrivingLoadingState extends StatelessWidget {
+  const _DrivingLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(color: AppColors.primary),
+          SizedBox(height: 24),
+          Text('Getting GPS lock...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
+class _SafetyAiCard extends StatelessWidget {
+  final SafetyStatus status;
+  final String message;
+  const _SafetyAiCard({required this.status, required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDanger = status == SafetyStatus.danger;
+    return FadeInDown(
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDanger ? Colors.red.withOpacity(0.9) : AppColors.cardBg.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isDanger ? Colors.white : AppColors.surface),
+        ),
+        child: Row(
+          children: [
+            Icon(isDanger ? Icons.gpp_bad : Icons.gpp_good, color: isDanger ? Colors.white : AppColors.safe),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatsBar extends StatelessWidget {
+  final double speed;
+  final String eta;
+  final double distanceRemaining;
+  final String riskScore;
+  final Color routeColor;
+  const _StatsBar({required this.speed, required this.eta, required this.distanceRemaining, required this.riskScore, required this.routeColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: AppColors.cardBg.withOpacity(0.9), borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _StatItem(label: 'Speed', value: '${speed.toStringAsFixed(0)} km/h', color: speed > 80 ? Colors.red : Colors.white),
+          _StatItem(label: 'ETA', value: eta, color: Colors.white),
+          _StatItem(
+            label: 'Left',
+            value: distanceRemaining < 1000 ? '${distanceRemaining.round()} m' : '${(distanceRemaining / 1000).toStringAsFixed(1)} km',
+            color: Colors.white,
+          ),
+          _StatItem(label: 'Risk', value: riskScore, color: routeColor),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _StatItem({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+      Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+    ]);
+  }
+}
+
+class _AlertWidget extends StatelessWidget {
+  final Map<String, dynamic> alert;
+  const _AlertWidget({required this.alert});
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeInLeft(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: (alert['color'] as Color).withOpacity(0.9), borderRadius: BorderRadius.circular(14)),
+        child: Row(children: [
+          Icon(alert['icon'] as IconData, color: Colors.white, size: 18),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(alert['title'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+            Text(alert['sub'] as String, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+          ])),
+        ]),
+      ),
+    );
   }
 }

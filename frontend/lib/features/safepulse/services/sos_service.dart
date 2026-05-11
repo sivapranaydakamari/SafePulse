@@ -15,6 +15,8 @@ class SosService {
 
   List<String> emergencyContacts = [];
 
+  // Emergency contacts must be configured by the user in Settings.
+  // No hardcoded fallback — sending SOS to unknown numbers is a production safety risk.
   Future<void> _loadContacts() async {
     final prefs = await SharedPreferences.getInstance();
     final contactsJson = prefs.getStringList('emergency_contacts') ?? [];

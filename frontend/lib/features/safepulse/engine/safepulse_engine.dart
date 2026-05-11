@@ -142,6 +142,9 @@ class SafePulseEngine {
                   : LogLevel.info,
         );
 
+    // TODO (future scope): inject OBDService for direct vehicle speed — replace GPS estimation.
+    // final OBDService _obdService = OBDServiceStub();
+
     // Bind event streams
     locationService.onSpeedUpdate = (speedMs) {
       aiService.currentSpeedKmh = speedMs * 3.6;

@@ -1,4 +1,5 @@
-// NOTE: Windows desktop support is out of scope for SafePulse. This runner is not officially supported or tested.
+// UNSUPPORTED PLATFORM: Windows desktop is explicitly out of scope for SafePulse.
+// This file is Flutter scaffold only. Do not build or distribute Windows binaries.
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>

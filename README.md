@@ -99,9 +99,20 @@ flutter run --dart-define=BASE_URL=http://<backend-host>:5000
 
 Note: `frontend/packages/telephony_fix` is a local patched Telephony plugin used for offline emergency SMS support. It keeps the app compatible with the Telephony API while allowing SafePulse to maintain the plugin fixes needed for SOS fallback behavior.
 
-## Platform Support
+## Platform support
 
-SafePulse officially supports **Android only**. The `windows/` directory exists as a Flutter scaffold but is not maintained, tested, or supported.
+SafePulse officially targets Android only. The windows/ Flutter scaffold directory exists but is untested, unsupported, and excluded from all CI pipelines and releases.
+
+## Future scope roadmap
+
+| Feature | Status | Scaffolding |
+|---|---|---|
+| Offline emergency queueing | Partial — SMS foundation via telephony_fix | sos_service.dart triggerOfflineSOS |
+| Advanced AI crash models | Partial — pluggable interpreter slot | ai_service.dart + ai-service/app/main.py |
+| Community safety reporting | Partial — risk incident infrastructure | risk_incident_repository.js |
+| Live traffic + weather integration | Scaffolded | backend/services/traffic_weather_service.js |
+| OBD-II vehicle integration | Scaffolded | lib/core/services/obd_service.dart |
+| Emergency service (police/ambulance) dispatch | Scaffolded | EmergencyDispatchService.java |
 
 ## Verification Status
 

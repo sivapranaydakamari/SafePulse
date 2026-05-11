@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import math
 import os
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional
@@ -130,9 +131,13 @@ class CrashAnalyzer:
             input_details = self._interpreter.get_input_details()
             output_details = self._interpreter.get_output_details()
             self._interpreter.set_tensor(input_details[0]["index"], tensor)
+            start = time.time()
             self._interpreter.invoke()
+            elapsed_ms = round((time.time() - start) * 1000, 2)
             output = self._interpreter.get_tensor(output_details[0]["index"])
-            return float(output.reshape(-1)[0])
+            result = float(output.reshape(-1)[0])
+            print(f"[CrashAnalyzer] Inference completed in {elapsed_ms}ms — crash_detected: {result > 0.55}")
+            return result
         except Exception:
             return None
 

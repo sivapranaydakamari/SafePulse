@@ -200,7 +200,7 @@ class _CircleMapPageState extends State<CircleMapPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : !_hasLocationPermission
-              ? _buildPermissionDenied()
+              ? const _PermissionDeniedView()
               : Stack(children: [
                   FlutterMap(
                     mapController: _mapController,
@@ -224,7 +224,13 @@ class _CircleMapPageState extends State<CircleMapPage> {
                   if (_selectedMemberIndex >= 0 && _selectedMemberIndex < _members.length)
                     Positioned(
                       top: 16, left: 16, right: 16,
-                      child: _buildMemberInfoCard(_members[_selectedMemberIndex]),
+                      child: _MemberInfoCard(
+                        member: _members[_selectedMemberIndex],
+                        location: _getMemberLocation(_members[_selectedMemberIndex]),
+                        formatLastSeen: _formatLastSeen,
+                        onClose: () => setState(() => _selectedMemberIndex = -1),
+                        onWhatsApp: _openWhatsApp,
+                      ),
                     ),
                   Positioned(bottom: 0, left: 0, right: 0, child: _buildBottomStrip()),
                 ]),
@@ -348,8 +354,61 @@ class _CircleMapPageState extends State<CircleMapPage> {
     );
   }
 
-  Widget _buildMemberInfoCard(Map<String, dynamic> member) {
-    final loc = _getMemberLocation(member);
+}
+
+class _PermissionDeniedView extends StatelessWidget {
+  const _PermissionDeniedView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.location_off, size: 80, color: AppColors.primary.withOpacity(0.4)),
+            const SizedBox(height: 24),
+            const Text('Location Permission Required',
+                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            const Text('Please allow location access to see your circle members on the map.',
+                style: TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () => openAppSettings(),
+              icon: const Icon(Icons.settings),
+              label: const Text('Open Settings'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 52),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MemberInfoCard extends StatelessWidget {
+  final Map<String, dynamic> member;
+  final LatLng? location;
+  final String Function(dynamic) formatLastSeen;
+  final VoidCallback onClose;
+  final Future<void> Function(String?) onWhatsApp;
+
+  const _MemberInfoCard({
+    required this.member,
+    required this.location,
+    required this.formatLastSeen,
+    required this.onClose,
+    required this.onWhatsApp,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final bool isDriving = member['isDriving'] == true;
     final int speed = (member['currentSpeed'] ?? 0).toInt();
     final String battery = member['batteryLevel'] ?? '??';
@@ -390,16 +449,15 @@ class _CircleMapPageState extends State<CircleMapPage> {
                       size: 12, color: isDriving ? AppColors.primary : AppColors.textSecondary),
                   const SizedBox(width: 4),
                   Text(
-                    isDriving ? 'Driving @ $speed km/h' : 'Last seen: ${_formatLastSeen(member['lastSeen'])}',
-                    style: TextStyle(
-                        color: isDriving ? AppColors.primary : AppColors.textSecondary, fontSize: 12),
+                    isDriving ? 'Driving @ $speed km/h' : 'Last seen: ${formatLastSeen(member['lastSeen'])}',
+                    style: TextStyle(color: isDriving ? AppColors.primary : AppColors.textSecondary, fontSize: 12),
                   ),
                 ]),
               ],
             )),
             IconButton(
               icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 18),
-              onPressed: () => setState(() => _selectedMemberIndex = -1),
+              onPressed: onClose,
             ),
           ]),
           const SizedBox(height: 10),
@@ -413,15 +471,15 @@ class _CircleMapPageState extends State<CircleMapPage> {
               Text(battery, style: TextStyle(color: batteryColor, fontSize: 12)),
             ]),
             const SizedBox(width: 12),
-            if (loc != null)
+            if (location != null)
               Flexible(child: Text(
-                '${loc.latitude.toStringAsFixed(4)}, ${loc.longitude.toStringAsFixed(4)}',
+                '${location!.latitude.toStringAsFixed(4)}, ${location!.longitude.toStringAsFixed(4)}',
                 style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
                 overflow: TextOverflow.ellipsis,
               )),
             const Spacer(),
             GestureDetector(
-              onTap: () => _openWhatsApp(phone),
+              onTap: () => onWhatsApp(phone),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
@@ -438,37 +496,6 @@ class _CircleMapPageState extends State<CircleMapPage> {
             ),
           ]),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPermissionDenied() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.location_off, size: 80, color: AppColors.primary.withOpacity(0.4)),
-            const SizedBox(height: 24),
-            const Text('Location Permission Required',
-                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            const Text('Please allow location access to see your circle members on the map.',
-                style: TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () => openAppSettings(),
-              icon: const Icon(Icons.settings),
-              label: const Text('Open Settings'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

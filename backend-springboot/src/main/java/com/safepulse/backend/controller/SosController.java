@@ -19,6 +19,8 @@ public class SosController {
         this.emergencyResponseService = emergencyResponseService;
     }
 
+    // TODO (future scope): inject EmergencyDispatchService and call dispatchEmergency()
+    // when SOS severity >= 4 or user has opted into government emergency notification.
     @PostMapping
     public ResponseEntity<EmergencyEventResponse> receiveSOS(@RequestBody SosRequest request) {
         return ResponseEntity.status(201)

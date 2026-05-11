@@ -39,7 +39,7 @@ dependencies:
   telephony:
     path: packages/telephony_fix
   flutter_phone_direct_caller: ^2.2.1
-  tflite_flutter: ^0.12.1
+  tflite_flutter: ^0.12.1  # REQ: AI-powered crash detection — see ai_service.dart
   flutter_tts: ^4.2.5
   screen_state: ^4.1.1
   vibration: ^3.1.8

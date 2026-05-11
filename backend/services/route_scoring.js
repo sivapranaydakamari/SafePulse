@@ -3,6 +3,9 @@
  * The scoring logic is deterministic and pure; data can come from MongoDB,
  * seed JSON, or future external incident feeds.
  */
+const trafficWeather = require('./traffic_weather_service');
+// TODO (future scope): const weatherRisk = await trafficWeather.getWeatherRisk(lat, lng);
+// Incorporate weatherRisk.severity into riskScore when implemented.
 
 function haversineMeters(lat1, lng1, lat2, lng2) {
   const R = 6371000;

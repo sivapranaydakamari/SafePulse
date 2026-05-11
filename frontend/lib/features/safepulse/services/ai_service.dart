@@ -1,6 +1,8 @@
 // lib/features/safepulse/services/ai_service.dart
 import 'dart:async';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
+// TFLite inference engine — crash detection model (assets/crash_model.tflite)
 import 'package:tflite_flutter/tflite_flutter.dart';
 import '../../../core/services/api_service.dart';
 
@@ -19,6 +21,7 @@ class AIService {
   bool _isModelLoaded = false;
 
   bool get isModelLoaded => _isModelLoaded;
+  String get modelStatus => _isModelLoaded ? 'loaded' : 'fallback';
 
   Future<void> initialize() async {
     try {
@@ -26,6 +29,7 @@ class AIService {
       _isModelLoaded = true;
       onLog?.call("🧠 TFLite AI Crash Model Loaded!");
       print("AIService: TFLite Model Loaded!");
+      debugPrint('[AIService] TFLite status: $modelStatus');
     } catch (e) {
       _isModelLoaded = false;
       onLog?.call("❌ ERROR: Failed to load AI model. Check assets folder.");
