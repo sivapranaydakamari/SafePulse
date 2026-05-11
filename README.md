@@ -97,6 +97,8 @@ flutter test
 flutter run --dart-define=BASE_URL=http://<backend-host>:5000
 ```
 
+Note: `frontend/packages/telephony_fix` is a local patched Telephony plugin used for offline emergency SMS support. It keeps the app compatible with the Telephony API while allowing SafePulse to maintain the plugin fixes needed for SOS fallback behavior.
+
 ## Verification Status
 
 Current automated checks:
