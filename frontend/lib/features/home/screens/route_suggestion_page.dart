@@ -452,20 +452,21 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
         children: [
           Row(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _fmtDuration(route.duration),
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    _fmtDist(route.distance),
-                    style: const TextStyle(color: Colors.grey, fontSize: 13),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _fmtDuration(route.duration),
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      _fmtDist(route.distance),
+                      style: const TextStyle(color: Colors.grey, fontSize: 13),
+                    ),
+                  ],
+                ),
               ),
-              const Spacer(),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -478,12 +479,11 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
                   Text('Risk: ${route.riskScore}', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
                 ],
               ),
-              // Add this after the second Column (around line 474)
-IconButton(
-  icon: Icon(Icons.info_outline, color: Colors.white70),
-  onPressed: () => _showSafetyDetails(route),
-  tooltip: 'View safety details',
-),
+              IconButton(
+                icon: Icon(Icons.info_outline, color: Colors.white70),
+                onPressed: () => _showSafetyDetails(route),
+                tooltip: 'View safety details',
+              ),
             ],
           ),
           

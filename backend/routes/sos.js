@@ -19,26 +19,32 @@ router.post('/start', requireAuth, async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     // 1. Find nearby users (requires locationPoint to be up-to-date via update-status)
-    const nearbyUsers = await User.find({
-      _id: { $ne: userId },
-      locationPoint: {
-        $near: {
-          $geometry: { type: 'Point', coordinates: [lng, lat] },
-          $maxDistance: 2000,
+    let nearbyUsers = [];
+    try {
+      nearbyUsers = await User.find({
+        _id: { $ne: userId },
+        locationPoint: {
+          $near: {
+            $geometry: { type: 'Point', coordinates: [Number(lng), Number(lat)] },
+            $maxDistance: 5000, // Increased to 5km for better reach
+          },
         },
-      },
-    }).select('_id name fcmToken');
+      }).select('_id name fcmToken');
+    } catch (dbErr) {
+      console.error('[SOS] Nearby users query failed (missing index?):', dbErr.message);
+      // Fallback: just get all users if geo query fails, or empty array
+    }
 
     // 2. Create SOS record
     const sos = new SOS({
       victimId: userId,
       location: { lat, lng, address: address || 'Emergency Location' },
-      contactsNotified: user.emergencyContacts.map(c => ({
+      contactsNotified: (user.emergencyContacts || []).map(c => ({
         name: c.name,
         phone: c.phone,
         status: 'PENDING',
       })),
-      nearbyUsersNotified: nearbyUsers.map(u => u._id),
+      nearbyUsersNotified: (nearbyUsers || []).map(u => u._id),
     });
     await sos.save();
 
@@ -50,7 +56,7 @@ router.post('/start', requireAuth, async (req, res) => {
       `Track here: ${mapUrl}\n` +
       `— SafePulse Safety App`;
 
-    const smsPromises = user.emergencyContacts.map(c =>
+    const smsPromises = (user.emergencyContacts || []).map(c =>
       notificationService.sendSMS(c.phone, smsBody).catch(err => console.error('[SOS] SMS fail:', err))
     );
 
@@ -62,15 +68,15 @@ router.post('/start', requireAuth, async (req, res) => {
           '🚨 Emergency Nearby!',
           `${user.name} needs help. Tap to see location.`,
           { sosId: sos._id.toString(), lat: String(lat), lng: String(lng), type: 'SOS_ALERT' }
-        )
+        ).catch(err => console.error('[SOS] Push fail:', err))
       : Promise.resolve();
 
-    // Run notifications in parallel, non-blocking
-    await Promise.allSettled([...smsPromises, pushPromise]);
-
-    // Update SOS contact statuses to SENT
-    sos.contactsNotified = sos.contactsNotified.map(c => ({ ...c.toObject(), status: 'SENT' }));
-    await sos.save();
+    // Run notifications in background (non-blocking) to ensure instant SOS trigger
+    Promise.allSettled([...smsPromises, pushPromise]).then(() => {
+      // Update SOS contact statuses to SENT
+      sos.contactsNotified = sos.contactsNotified.map(c => ({ ...c.toObject(), status: 'SENT' }));
+      sos.save().catch(err => console.error('[SOS] Failed to save SENT status', err));
+    });
 
     const realtimeHub = req.app.get('realtimeHub');
     if (realtimeHub?.isEnabled) {
@@ -89,8 +95,8 @@ router.post('/start', requireAuth, async (req, res) => {
     res.status(201).json({
       success: true,
       sosId: sos._id,
-      nearbyCount: nearbyUsers.length,
-      contactsCount: user.emergencyContacts.length,
+      nearbyCount: (nearbyUsers || []).length,
+      contactsCount: (user.emergencyContacts || []).length,
     });
   } catch (error) {
     console.error('[SOS] start error:', error);
