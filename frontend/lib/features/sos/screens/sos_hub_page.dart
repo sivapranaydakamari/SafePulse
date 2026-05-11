@@ -257,14 +257,19 @@ class _SOSHubPageState extends State<SOSHubPage>
 
     try {
       final pos = await LocationService.getCurrentLocation();
+      debugPrint('[SOS] Triggering SOS at ${pos.latitude}, ${pos.longitude}');
+      
       final success = await context.read<SOSProvider>().startSOS(
         lat: pos.latitude,
         lng: pos.longitude,
         address: _currentLocation.replaceFirst("Your Location: ", ""),
       );
 
+      debugPrint('[SOS] startSOS returned: $success');
+
       if (success && mounted) {
         final sosId = context.read<SOSProvider>().activeSosId;
+        debugPrint('[SOS] activeSosId: $sosId');
         if (sosId != null) {
           await Navigator.push(
             context,
@@ -276,6 +281,24 @@ class _SOSHubPageState extends State<SOSHubPage>
             ),
           );
         }
+      } else if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ SOS failed to trigger. Check your connection and try again.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[SOS] _triggerSOS error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ SOS error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       if (mounted) {

@@ -45,6 +45,10 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
   void dispose() {
     _debounce?.cancel();
     _removeSuggestions();
+    // Clean up the provider listener
+    try {
+      context.read<NavigationProvider>().removeListener(_onSuggestionsUpdated);
+    } catch (_) {}
     _destinationController.dispose();
     _sheetController.dispose();
     super.dispose();
@@ -81,6 +85,27 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
   );
 }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Listen to NavigationProvider so we re-render the overlay whenever
+    // suggestions change (handles the async timing issue in Timer callbacks).
+    final navProvider = context.read<NavigationProvider>();
+    navProvider.removeListener(_onSuggestionsUpdated);
+    navProvider.addListener(_onSuggestionsUpdated);
+  }
+
+  void _onSuggestionsUpdated() {
+    if (!mounted) return;
+    // Only show suggestions when actively searching (not during route fetch)
+    if (_destinationController.text.trim().length >= 3 && _destinationPos == null) {
+      _showSuggestions();
+    } else if (_destinationPos != null) {
+      // A destination was selected — hide suggestions
+      _removeSuggestions();
+    }
+  }
+
   void _onDestinationChanged(String query) {
     _debounce?.cancel();
     if (query.trim().length < 3) {
@@ -88,9 +113,12 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
       context.read<NavigationProvider>().clearSuggestions();
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 500), () async {
-      await context.read<NavigationProvider>().searchDestination(query);
-      if (mounted) _showSuggestions();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        context.read<NavigationProvider>().searchDestination(query);
+        // The _onSuggestionsUpdated listener will call _showSuggestions()
+        // once the provider notifies with results.
+      }
     });
   }
 

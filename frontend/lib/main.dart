@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
+import 'firebase_options.dart';
+
 import 'core/repositories/user_repository.dart';
 import 'core/repositories/sos_repository.dart';
 import 'core/repositories/circle_repository.dart';
@@ -29,7 +31,7 @@ import 'core/providers/navigation_provider.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   debugPrint('[FCM] Background message: ${message.notification?.title}');
 }
 
@@ -37,7 +39,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await BackgroundServiceHelper.initializeService();
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     await FirebaseMessaging.instance.requestPermission(
       alert: true,
