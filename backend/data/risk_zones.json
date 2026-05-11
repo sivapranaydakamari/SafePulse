@@ -1,0 +1,56 @@
+[
+  {
+    "id": "hyd-old-city-incidents",
+    "lat": 17.3616,
+    "lng": 78.4747,
+    "radiusM": 800,
+    "severity": 75,
+    "label": "High incident area",
+    "source": "seed:incident-history"
+  },
+  {
+    "id": "hyd-central-reports",
+    "lat": 17.385,
+    "lng": 78.4867,
+    "radiusM": 900,
+    "severity": 85,
+    "label": "Reported unsafe zone",
+    "source": "seed:community-report"
+  },
+  {
+    "id": "vijayawada-low-light",
+    "lat": 16.506,
+    "lng": 80.648,
+    "radiusM": 1000,
+    "severity": 55,
+    "label": "Low-light area",
+    "source": "seed:lighting-survey"
+  },
+  {
+    "id": "hyd-snatching-cluster",
+    "lat": 17.35,
+    "lng": 78.51,
+    "radiusM": 1000,
+    "severity": 80,
+    "label": "Frequent snatching reports",
+    "source": "seed:incident-history"
+  },
+  {
+    "id": "hyd-low-light-pocket",
+    "lat": 17.41,
+    "lng": 78.46,
+    "radiusM": 500,
+    "severity": 40,
+    "label": "Low-light area",
+    "source": "seed:lighting-survey"
+  },
+  {
+    "id": "hyd-past-incidents",
+    "lat": 17.37,
+    "lng": 78.53,
+    "radiusM": 700,
+    "severity": 65,
+    "label": "Past incidents logged",
+    "source": "seed:incident-history"
+  }
+]
