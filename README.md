@@ -105,24 +105,6 @@ Note: `frontend/packages/telephony_fix` is a local patched Telephony plugin used
 
 SafePulse officially targets Android only. The windows/ Flutter scaffold directory exists but is untested, unsupported, and excluded from all CI pipelines and releases.
 
-## Docker deployment
-
-All services can be started together with Docker Compose:
-
-```bash
-cp backend/.env.example backend/.env   # fill in secrets
-docker compose up --build
-```
-
-| Service | Container port | Host port |
-|---|---|---|
-| Node.js API gateway | 5000 | 5000 |
-| Spring Boot emergency service | 8080 | 8080 |
-| Python AI service | 7000 | 7000 |
-| MongoDB | 27017 | 27017 |
-
-Each service has a minimal `Dockerfile` in its directory. The compose file wires the inter-service URLs automatically (`SPRING_EMERGENCY_SERVICE_URL`, `AI_SERVICE_URL`, `MONGODB_URI`).
-
 ## Future scope roadmap
 
 ### Phase 1 — Near-term
