@@ -16,13 +16,18 @@ class AIService {
 
   bool _isProcessing = false;
   bool _resetting = false;
-  
+  bool _isModelLoaded = false;
+
+  bool get isModelLoaded => _isModelLoaded;
+
   Future<void> initialize() async {
     try {
       _interpreter = await Interpreter.fromAsset('assets/crash_model.tflite');
+      _isModelLoaded = true;
       onLog?.call("🧠 TFLite AI Crash Model Loaded!");
       print("AIService: TFLite Model Loaded!");
     } catch (e) {
+      _isModelLoaded = false;
       onLog?.call("❌ ERROR: Failed to load AI model. Check assets folder.");
       print("AIService: TFLite Model FAILED TO LOAD! Error: $e");
     }

@@ -135,17 +135,7 @@ async function fetchRoutesFromOSRM(start, destination, alternativeCount = 3) {
       };
     });
 
-    while (routes.length < alternativeCount && routes.length > 0) {
-      const baseRoute = routes[0];
-      routes.push({
-        ...baseRoute,
-        id: `route_${routes.length + 1}`,
-        distance: baseRoute.distance * (1 + routes.length * 0.05),
-        duration: baseRoute.duration * (1 + routes.length * 0.05),
-      });
-    }
-
-    return routes.slice(0, alternativeCount);
+    return routes;
   } catch (error) {
     console.error('Error fetching routes from OSRM:', error.message);
     return [{

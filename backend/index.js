@@ -42,23 +42,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(async () => {
-    console.log('✅ MongoDB connected');
-    try {
-      const User = require('./models/User');
-      await User.collection.dropIndex('phone_1');
-      console.log('Refreshed phone index');
-    } catch (e) { }
-    try {
-      const User = require('./models/User');
-      await User.collection.dropIndex('email_1');
-      console.log('Refreshed email index');
-    } catch (e) { }
-  })
-  .catch(err => console.error('MongoDB error:', err.message));
-
 // Routes
 app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/circle', require('./routes/circle'));
@@ -76,25 +59,49 @@ app.use('/api/ai',       require('./routes/ai'));
 
 app.get('/', (req, res) => res.send('SafePulse API v2 running'));
 app.get('/health', (req, res) => {
+  const dbReady = mongoose.connection.readyState === 1;
+  if (!dbReady) {
+    return res.status(503).json({ status: 'degraded', db: 'disconnected' });
+  }
   res.json({
     status: 'ok',
+    db: 'connected',
     service: 'safepulse-api-gateway',
     realtime: realtimeHub.isEnabled,
-    mongoReadyState: mongoose.connection.readyState,
   });
 });
 
-// Bind to 0.0.0.0 so physical devices on the LAN can connect
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`SafePulse API listening on 0.0.0.0:${PORT}`);
-  console.log(`SafePulse realtime WebSocket ready at ws://0.0.0.0:${PORT}/ws/tracking`);
-}).on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`❌ Port ${PORT} is already in use. Kill the other process first:`);
-    console.error(`   Windows: netstat -ano | findstr :${PORT}  then  taskkill /PID <pid> /F`);
+// MongoDB — server only starts after a successful connection
+mongoose.connect(process.env.MONGODB_URI)
+  .then(async () => {
+    console.log('✅ MongoDB connected');
+    try {
+      const User = require('./models/User');
+      await User.collection.dropIndex('phone_1');
+      console.log('Refreshed phone index');
+    } catch (e) { }
+    try {
+      const User = require('./models/User');
+      await User.collection.dropIndex('email_1');
+      console.log('Refreshed email index');
+    } catch (e) { }
+
+    // Bind to 0.0.0.0 so physical devices on the LAN can connect
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`SafePulse API listening on 0.0.0.0:${PORT}`);
+      console.log(`SafePulse realtime WebSocket ready at ws://0.0.0.0:${PORT}/ws/tracking`);
+    }).on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use. Kill the other process first:`);
+        console.error(`   Windows: netstat -ano | findstr :${PORT}  then  taskkill /PID <pid> /F`);
+        process.exit(1);
+      } else {
+        console.error('Server error:', err);
+        process.exit(1);
+      }
+    });
+  })
+  .catch(err => {
+    console.error('❌ MongoDB connection failed. Server will not start:', err.message);
     process.exit(1);
-  } else {
-    console.error('Server error:', err);
-    process.exit(1);
-  }
-});
+  });

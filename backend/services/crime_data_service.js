@@ -42,6 +42,20 @@ crimeZoneSchema.index({ district: 1, unit: 1 });
 
 const CrimeZone = mongoose.model('CrimeZone', crimeZoneSchema);
 
+// Startup check: warn once after DB connection is ready if the collection is empty
+mongoose.connection.once('open', async () => {
+  try {
+    const count = await CrimeZone.countDocuments();
+    if (count === 0) {
+      console.warn(
+        '[SafetyEngine] WARNING: CrimeZone collection is empty. ' +
+        'Route risk scores will default to 0. ' +
+        'Import FIR/crime data or seed with risk_zones.json.'
+      );
+    }
+  } catch (_) {}
+});
+
 class CrimeDataService {
   constructor() {
     this.GRID_SIZE = 0.01; // ~1km grid cells
