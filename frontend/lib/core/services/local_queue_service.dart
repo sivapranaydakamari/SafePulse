@@ -47,4 +47,30 @@ class LocalQueueService {
   }
 
   Future<int> getPendingCount() async => (await getPending()).length;
+
+  /// Processes all queued events by calling [handler] for each.
+  /// Events for which [handler] returns false are kept for the next retry.
+  Future<void> processQueue(Future<bool> Function(Map<String, dynamic> event) handler) async {
+    final pending = await getPending();
+    if (pending.isEmpty) return;
+    final remaining = <Map<String, dynamic>>[];
+    for (final event in pending) {
+      try {
+        final success = await handler(event);
+        if (!success) remaining.add(event);
+      } catch (_) {
+        remaining.add(event);
+      }
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (remaining.isEmpty) {
+        await prefs.remove(_queueKey);
+      } else {
+        await prefs.setStringList(_queueKey, remaining.map(jsonEncode).toList());
+      }
+    } catch (e) {
+      debugPrint('[LocalQueueService] processQueue flush failed: $e');
+    }
+  }
 }

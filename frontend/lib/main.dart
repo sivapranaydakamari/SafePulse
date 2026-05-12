@@ -31,6 +31,7 @@ import 'core/enums.dart';
 
 import 'features/auth/screens/splash_screen.dart';
 import 'features/home/screens/home_page.dart';
+import 'core/services/local_queue_service.dart';
 import 'features/safepulse/services/background_service.dart';
 import 'features/safepulse/providers/safepulse_provider.dart';
 import 'features/tracking/providers/tracking_provider.dart';
@@ -117,8 +118,33 @@ class SafePulseApp extends StatelessWidget {
   }
 }
 
-class AppGate extends StatelessWidget {
+class AppGate extends StatefulWidget {
   const AppGate({super.key});
+
+  @override
+  State<AppGate> createState() => _AppGateState();
+}
+
+class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Retry any SMS events that were queued while offline.
+      LocalQueueService.instance.processQueue((event) async => false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -1,3 +1,4 @@
+// SafePulse Problem Gap #4: safety-scored route recommendations backed by incident data.
 /**
  * Scores candidate routes against risk zones supplied by the repository layer.
  * The scoring logic is deterministic and pure; data can come from MongoDB,
@@ -60,6 +61,34 @@ const RANK_LABELS  = ['SAFEST',  'BALANCED', 'RISKY'];
 const RANK_COLORS  = ['green',   'yellow',   'red'];
 const RANK_DISPLAY = ['Safest',  'Balanced', 'Risky'];
 
+// SafePulse Problem Gap #4: weather multiplier raises risk scores when conditions are adverse.
+async function scoreRoutesWithWeather(routes, riskZones = [], centerLat = null, centerLng = null) {
+  let riskMultiplier = 1.0;
+  if (centerLat !== null && centerLng !== null) {
+    try {
+      const weather = await trafficWeather.getWeatherRisk(centerLat, centerLng);
+      if (weather && weather.severity > 0) {
+        riskMultiplier = 1 + (weather.severity / 200); // max +50% at severity=100
+      }
+    } catch (_) {}
+  }
+
+  const scored = routes.map(route => ({
+    ...route,
+    riskScore: Math.min(100, Math.round(routeRiskScore(route.polyline, riskZones) * riskMultiplier)),
+  }));
+
+  scored.sort((a, b) => a.riskScore - b.riskScore);
+
+  return scored.slice(0, 3).map((route, index) => ({
+    ...route,
+    riskLabel: RANK_LABELS[index],
+    type:       RANK_LABELS[index],
+    color:      RANK_COLORS[index],
+    label:      RANK_DISPLAY[index],
+  }));
+}
+
 // Only real OSRM routes are returned; no synthetic variants are fabricated.
 function scoreRoutes(routes, riskZones = []) {
   const scored = routes.map(route => ({
@@ -84,4 +113,5 @@ module.exports = {
   riskLabel,
   routeRiskScore,
   scoreRoutes,
+  scoreRoutesWithWeather,
 };

@@ -220,6 +220,13 @@ class CrashAnalyzer:
             notes.append("High vehicle speed plus impact increases accident confidence.")
         return notes
 
+    def log_false_positive(self, probability: float, max_g: float) -> None:
+        _log.warning(
+            "[CrashAnalyzer] False positive logged — probability=%.4f max_g=%.2fG",
+            probability,
+            max_g,
+        )
+
     @staticmethod
     def _g_force(reading: SensorReading) -> float:
         return math.sqrt(reading.ax**2 + reading.ay**2 + reading.az**2) / 9.81

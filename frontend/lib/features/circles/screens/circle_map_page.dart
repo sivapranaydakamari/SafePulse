@@ -36,7 +36,6 @@ class _CircleMapPageState extends State<CircleMapPage> {
   bool _hasLocationPermission = false;
   List<Map<String, dynamic>> _members = [];
   Timer? _locationTimer;
-  Timer? _fetchMembersTimer;
   StreamSubscription<QuerySnapshot>? _firestoreSubscription;
   int _selectedMemberIndex = -1;
 
@@ -62,10 +61,8 @@ class _CircleMapPageState extends State<CircleMapPage> {
         debugPrint('[CircleMap] location update failed: $e\n$stack');
       }
     });
-    _fetchMembersTimer =
-        Timer.periodic(const Duration(seconds: 15), (_) => _fetchMembers());
 
-    // Firestore supplementary real-time channel — merges position updates into
+    // SafePulse Problem Gap #5: Firestore is the primary real-time channel for member positions.
     // the existing _members list without replacing the REST polling path.
     // Filtered by circleId to prevent reading other circles' locations (Fix 5).
     _firestoreSubscription = FirebaseFirestore.instance
@@ -154,7 +151,6 @@ class _CircleMapPageState extends State<CircleMapPage> {
   @override
   void dispose() {
     _locationTimer?.cancel();
-    _fetchMembersTimer?.cancel();
     _firestoreSubscription?.cancel();
     super.dispose();
   }

@@ -35,17 +35,6 @@ const authLimiter = rateLimit({
   message: { success: false, error: 'Too many authentication attempts. Please try again later.' },
 });
 
-// === API GATEWAY LAYER ===
-// This process acts as the sole public-facing entry point for all SafePulse
-// services. Responsibilities:
-//   • TLS termination  — handled by the nginx reverse proxy in front of this
-//     process (see backend/TLS_SETUP.md for the recommended nginx config).
-//   • Rate limiting    — express-rate-limit on all routes (globalLimiter) and
-//     a tighter limit on auth endpoints (authLimiter).
-//   • Authentication   — JWT validation via requireAuth middleware before any
-//     protected route handler executes.
-//   • Request logging  — structured JSON via morgan; X-Request-ID correlation.
-//   • Routing          — all /api/* paths fanned out to service-specific routers.
 app.use(requestId);
 app.use(helmet());
 app.use(globalLimiter);

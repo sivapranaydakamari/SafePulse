@@ -1,4 +1,4 @@
-// lib/features/safepulse/services/alert_service.dart
+// SafePulse Problem Gap #3: hands-free alerts (TTS + vibration + torch) for injured users.
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:vibration/vibration.dart';
 import 'package:torch_light/torch_light.dart';

@@ -1,0 +1,36 @@
+# Flutter/Dart generated files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+.pub-cache/
+.pub/
+
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+android/app/google-services.json
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# Windows — generated scaffold; excluded to avoid platform-specific churn
+# Run `flutter create --platforms windows .` locally to regenerate.
+windows/
+
+# macOS
+macos/Pods/
+macos/.symlinks/
+
+# Web
+web/
+
+# Secrets
+*.env
+google-services.json
+GoogleService-Info.plist

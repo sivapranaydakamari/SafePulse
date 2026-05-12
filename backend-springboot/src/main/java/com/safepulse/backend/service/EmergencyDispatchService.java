@@ -1,19 +1,27 @@
 package com.safepulse.backend.service;
 
-/**
- * FUTURE SCOPE: Emergency Dispatch Integration
- * Planned: Connect to police/ambulance CAD systems via REST webhooks.
- * Extension point: implement dispatch(EmergencyEvent) to POST to gov APIs.
- * Current state: stub — logs dispatch intent, no external call made.
- * Tracked in: GitHub Issues label "future-dispatch"
- */
+import com.safepulse.backend.model.EmergencyEvent;
+import com.safepulse.backend.repository.EmergencyEventRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+// SafePulse Problem Gap #3: autonomous SOS needs a persistent dispatch record.
+@Service
 public class EmergencyDispatchService {
 
-    /**
-     * TODO: Dispatch to emergency authorities. Stub only — logs intent, no real API call.
-     */
-    public void dispatchEmergency(String sosEventId, double latitude, double longitude, int severity) {
-        System.out.println("[EmergencyDispatch] STUB — SOS event: " + sosEventId +
-            " | lat: " + latitude + " | lng: " + longitude + " | severity: " + severity);
+    @Autowired
+    private EmergencyEventRepository repository;
+
+    public EmergencyEvent dispatchEmergency(String sosEventId, double latitude, double longitude, int severity) {
+        EmergencyEvent event = new EmergencyEvent();
+        event.setEventId(sosEventId);
+        event.setLatitude(latitude);
+        event.setLongitude(longitude);
+        event.setSeverity(severity >= 75 ? "CRITICAL" : severity >= 50 ? "HIGH" : severity >= 25 ? "MEDIUM" : "LOW");
+        event.setPriorityScore(severity);
+        event.setDispatchRecommended(severity >= 50);
+        event.setStatus("DISPATCHED");
+        event.setLocationStatus("CONFIRMED");
+        return repository.save(event);
     }
 }

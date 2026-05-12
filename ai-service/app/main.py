@@ -77,6 +77,30 @@ def analyze_accident(payload: AccidentAnalysisRequest) -> dict:
     return result
 
 
+_false_positive_count: int = 0
+
+
+@app.get("/metrics")
+def metrics() -> dict:
+    total = _inference_stats["total_inferences"]
+    return {
+        "total_inferences": total,
+        "crash_detections": _inference_stats["crash_detections"],
+        "false_positives_logged": _false_positive_count,
+        "avg_inference_ms": round(_inference_stats["total_ms"] / total, 2) if total > 0 else 0.0,
+        "model_runtime": analyzer.runtime_name,
+        "model_loaded": analyzer.is_model_loaded,
+    }
+
+
+@app.post("/metrics/false-positive")
+def log_false_positive_endpoint() -> dict:
+    global _false_positive_count
+    _false_positive_count += 1
+    analyzer.log_false_positive(0.0, 0.0)
+    return {"logged": True, "total_false_positives": _false_positive_count}
+
+
 @app.get("/ai/stats")
 def ai_stats() -> dict:
     total = _inference_stats["total_inferences"]

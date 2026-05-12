@@ -1,9 +1,11 @@
+// SafePulse Problem Gap #5: Safety Circle gets real-time location via WebSocket + Firestore mirror.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
@@ -75,6 +77,18 @@ class RealtimeTrackingService {
     if (lat != null && lng != null) {
       _mirrorLocationToFirestore(lat, lng);
     }
+  }
+
+  // SafePulse Problem Gap #5: Firestore is the primary channel for Safety Circle visibility.
+  void updateLocation(Position position) {
+    if (position.latitude == 0.0 && position.longitude == 0.0) return;
+    _mirrorLocationToFirestore(position.latitude, position.longitude);
+    _send({
+      'type': 'tracking:update',
+      'speed': position.speed,
+      'isPhoneOn': false,
+      'location': {'lat': position.latitude, 'lng': position.longitude},
+    });
   }
 
   void sendSosStarted({

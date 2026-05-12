@@ -28,5 +28,24 @@ class CrashAnalyzerTest(unittest.TestCase):
         self.assertTrue(any("phone drop" in note for note in result["calibration"]))
 
 
+    def test_low_g_returns_no_crash(self):
+        samples = [SensorReading(ax=0.1, ay=0.2, az=9.8, speed_kmh=30) for _ in range(250)]
+        result = self.analyzer.analyze(samples)
+        self.assertFalse(result["crashDetected"])
+        self.assertEqual(result["severity"], "LOW")
+
+    def test_empty_window_returns_no_crash(self):
+        result = self.analyzer.analyze([])
+        self.assertFalse(result["crashDetected"])
+        self.assertEqual(result["crashProbability"], 0.0)
+
+    def test_log_false_positive_does_not_raise(self):
+        self.analyzer.log_false_positive(0.3, 3.0)
+
+    def test_heuristic_mode_when_model_missing(self):
+        self.assertEqual(self.analyzer.runtime_name, "heuristic")
+        self.assertFalse(self.analyzer.is_model_loaded)
+
+
 if __name__ == "__main__":
     unittest.main()

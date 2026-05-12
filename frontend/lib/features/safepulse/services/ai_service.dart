@@ -1,4 +1,4 @@
-// lib/features/safepulse/services/ai_service.dart
+// SafePulse Problem Gap #2: on-device TFLite crash detection from a 250-sample sensor window.
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';

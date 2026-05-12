@@ -1,4 +1,4 @@
-// lib/features/safepulse/services/sensor_service.dart
+// SafePulse Problem Gap #2: continuous 50 Hz sensor monitoring enables crash detection.
 import 'dart:async';
 import 'dart:math';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -72,6 +72,10 @@ class SensorService {
   }
 
   void _restartAccel() {
+    if (_accelRetryCount >= 10) {
+      onLog?.call("⚠️ Accelerometer: max retries reached. Sensor unavailable.");
+      return;
+    }
     final delay = Duration(milliseconds: min(500 * (_accelRetryCount + 1), 5000));
     onLog?.call("⚠️ Accelerometer error. Retrying in ${delay.inMilliseconds}ms...");
     Future.delayed(delay, () {
@@ -95,6 +99,10 @@ class SensorService {
   }
 
   void _restartGyro() {
+    if (_gyroRetryCount >= 10) {
+      onLog?.call("⚠️ Gyroscope: max retries reached. Sensor unavailable.");
+      return;
+    }
     final delay = Duration(milliseconds: min(500 * (_gyroRetryCount + 1), 5000));
     onLog?.call("⚠️ Gyroscope error. Retrying in ${delay.inMilliseconds}ms...");
     Future.delayed(delay, () {

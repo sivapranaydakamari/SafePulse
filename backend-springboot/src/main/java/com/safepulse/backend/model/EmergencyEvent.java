@@ -111,4 +111,12 @@ public class EmergencyEvent {
     public Instant getUpdatedAt() {
         return updatedAt;
     }
+
+    public String getSosEventId() {
+        return eventId;
+    }
+
+    public void setSosEventId(String sosEventId) {
+        this.eventId = sosEventId;
+    }
 }

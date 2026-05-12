@@ -33,6 +33,16 @@ Road accidents are among the leading causes of preventable death globally, yet w
 | No safety-scored route recommendations | Route engines optimise only for time or distance, not safety |
 | No trusted-contact Safety Circle | Guardians have no passive visibility into an active journey |
 
+### Feature Implementation Map
+
+| Problem Gap | Feature | Status | Key Files |
+|---|---|---|---|
+| No over-speed monitoring | Speed threshold alerts + hands-free TTS warnings | Implemented | `sensor_service.dart`, `alert_service.dart` |
+| No real-time crash detection | 250-sample TFLite sliding window + server AI fallback | Implemented | `ai_service.dart`, `crash_analyzer.py` |
+| No hands-free emergency alerting | Autonomous SOS — SMS + call + server event, queued offline | Implemented | `sos_service.dart`, `local_queue_service.dart` |
+| No safety-scored routes | Risk-scored OSRM routes with weather multiplier | Implemented | `route_scoring.js`, `traffic_weather_service.js` |
+| No Safety Circle visibility | Live WebSocket + Firestore real-time location sync | Implemented | `realtime_tracking_service.dart`, `circle_map_page.dart` |
+
 SafePulse directly addresses all five gaps in a single integrated platform.
 
 ---
@@ -318,7 +328,7 @@ cd backend-springboot
 .\mvnw.cmd test
 ```
 
-Covers: `SosController`, `EmergencyResponseService`, `SosRequest` DTO validation, application context.
+Covers: `SosController`, `EmergencyResponseService`, `EmergencyDispatchService`, `SosRequest` DTO validation, application context.
 
 ### Python AI Service — unittest
 
@@ -327,7 +337,7 @@ cd ai-service
 PYTHONPATH=. python -m unittest discover -s tests
 ```
 
-Covers: `CrashAnalyzer` heuristic logic, TFLite model load guard, phone-drop filtering, FastAPI health endpoint.
+Covers: `CrashAnalyzer` heuristic logic, TFLite model load guard, phone-drop filtering, low-g no-crash assertion, empty-window guard, false-positive logging.
 
 ### Flutter — flutter\_test
 
@@ -346,7 +356,12 @@ All four test suites run automatically on every push and pull request via `.gith
 
 ## Platform Support
 
-SafePulse officially targets **Android only**. The `windows/` Flutter scaffold directory exists but is untested, unsupported, and excluded from all CI pipelines and releases.
+SafePulse officially targets **Android only**. The `windows/` Flutter scaffold directory is excluded from version control via `frontend/.gitignore` and is unsupported in CI. To regenerate it locally:
+
+```bash
+cd frontend
+flutter create --platforms windows .
+```
 
 ---
 

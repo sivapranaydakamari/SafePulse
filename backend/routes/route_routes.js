@@ -29,7 +29,9 @@ router.post('/suggest', requireAuth, async (req, res) => {
     console.log(`Fetched ${routes.length} routes from OSRM`);
 
     const riskZones = await riskIncidentRepository.getRiskZonesForRoutes(routes);
-    const scoredRoutes = routeScoring.scoreRoutes(routes, riskZones);
+    const centerLat = (start.lat + destination.lat) / 2;
+    const centerLng = (start.lng + destination.lng) / 2;
+    const scoredRoutes = await routeScoring.scoreRoutesWithWeather(routes, riskZones, centerLat, centerLng);
 
     // Fix 7: flag when MongoDB CrimeZone collection is empty (all scores == 0)
     const riskDataAvailable = scoredRoutes.some(r => r.riskScore > 0);
