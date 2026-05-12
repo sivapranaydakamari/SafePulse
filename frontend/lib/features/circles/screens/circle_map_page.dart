@@ -67,8 +67,10 @@ class _CircleMapPageState extends State<CircleMapPage> {
 
     // Firestore supplementary real-time channel — merges position updates into
     // the existing _members list without replacing the REST polling path.
+    // Filtered by circleId to prevent reading other circles' locations (Fix 5).
     _firestoreSubscription = FirebaseFirestore.instance
         .collection('live_locations')
+        .where('circleId', isEqualTo: widget.circleId)
         .snapshots()
         .listen(
       (snapshot) {

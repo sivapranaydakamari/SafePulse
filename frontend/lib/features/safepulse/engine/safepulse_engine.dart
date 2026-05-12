@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ai_service.dart';
 import '../services/alert_service.dart';
 import '../../../core/repositories/sos_repository.dart';
@@ -155,7 +156,7 @@ class SafePulseEngine {
       final position = locationService.lastValidPosition;
       realtimeTrackingService.sendTrackingUpdate(
         speed: speedMs,
-        isPhoneOn: true,
+        isPhoneOn: warningService.isScreenOn,
         lat: position?.latitude,
         lng: position?.longitude,
       );
@@ -198,16 +199,35 @@ class SafePulseEngine {
       });
     };
 
-    // Init AI — log a warning if the TFLite model fails to load
-    aiService.initialize().then((_) {
+    // Init AI with degraded-mode persistence (Fix 3)
+    unawaited(_initAI());
+    alertService.initialize();
+  }
+
+  Future<void> _initAI() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('tflite_init_failed') == true) {
+      log(
+        "⚠️ TFLite previously failed to initialize. Running in heuristic/fallback mode.",
+        level: LogLevel.warning,
+      );
+      return;
+    }
+    try {
+      await aiService.initialize();
       if (!aiService.isModelLoaded) {
         log(
           "⚠️ AI model unavailable. Running in basic threshold mode.",
           level: LogLevel.warning,
         );
       }
-    });
-    alertService.initialize();
+    } catch (e) {
+      await prefs.setBool('tflite_init_failed', true);
+      log(
+        "⚠️ TFLite initialization failed. Switching to degraded/heuristic mode.",
+        level: LogLevel.warning,
+      );
+    }
   }
 
   void log(String message, {LogLevel level = LogLevel.info}) {

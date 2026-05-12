@@ -61,7 +61,7 @@ class AIService {
     double ax = data[0], ay = data[1], az = data[2];
     double gForce = sqrt(pow(ax, 2) + pow(ay, 2) + pow(az, 2)) / 9.81;
 
-    if (gForce > 3.0 && _sensorBuffer.length == 250) {
+    if (gForce > 4.5 && _sensorBuffer.length == 250) {
       if (!_isProcessing) {
         onLog?.call("⚠️ IMPACT: ${gForce.toStringAsFixed(1)} Gs. AI Analyzing...");
         debugPrint("AIService: IMPACT DETECTED! G-Force: ${gForce.toStringAsFixed(1)}");
@@ -80,7 +80,8 @@ class AIService {
     _resetting = false;
   }
 
-  int _recentSpikeCount = 0;
+  // Fix 8: rolling timestamp buffer — 2 spikes within 500 ms trigger fallback SOS
+  final List<DateTime> _recentSpikes = [];
 
   Future<void> _runAIAnalysis(List<List<double>> windowToAnalyze, double maxGForce) async {
     _isProcessing = true;
@@ -94,19 +95,19 @@ class AIService {
     }
 
     if (_interpreter == null) {
-      if (maxGForce > 3.5) { // Lowered to 3.5 for manual testing
-        _recentSpikeCount++;
-        debugPrint("AIService: INTERPRETER NULL. Spike count: $_recentSpikeCount / 2");
-        if (_recentSpikeCount >= 2) {
+      if (maxGForce > 3.5) {
+        final now = DateTime.now();
+        _recentSpikes.removeWhere((t) => now.difference(t).inMilliseconds > 500);
+        _recentSpikes.add(now);
+        debugPrint("AIService: INTERPRETER NULL. Spikes in 500ms window: ${_recentSpikes.length} / 2");
+        if (_recentSpikes.length >= 2) {
+          _recentSpikes.clear();
           debugPrint("AIService: FALLBACK CRASH TRIGGERED!");
           onLog?.call("⚠️ Basic Threshold Crash Detected! (AI offline)");
           onCrashDetected?.call(1.0);
         } else {
           onLog?.call("⚠️ Spike detected. Awaiting temporal confirmation...");
         }
-        Future.delayed(const Duration(seconds: 2), () {
-          _recentSpikeCount = 0;
-        });
       } else {
         onLog?.call("⚠️ Impact filtered by Basic Threshold (AI offline)");
       }

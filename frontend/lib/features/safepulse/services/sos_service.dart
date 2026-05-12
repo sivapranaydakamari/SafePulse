@@ -104,22 +104,32 @@ class SosService {
     final now = DateTime.now();
     String timestamp =
         "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
-    String locText;
 
+    // URL is built first and is never truncated (Fix 4)
+    final String locPart;
     if (hasLocation) {
-      int staleThreshold = speedMs > 10.0 ? 10 : 30;
-      if (locationAgeSec != null && locationAgeSec > staleThreshold) {
-        locText = "Loc(stale): https://maps.google.com/?q=$lat,$lng";
-      } else {
-        locText = "Loc: https://maps.google.com/?q=$lat,$lng";
-      }
+      final int staleThreshold = speedMs > 10.0 ? 10 : 30;
+      final bool stale = locationAgeSec != null && locationAgeSec > staleThreshold;
+      final String mapUrl = "https://maps.google.com/?q=$lat,$lng";
+      locPart = stale ? "Loc(stale): $mapUrl" : "Loc: $mapUrl";
     } else {
-      locText = "Loc: UNAVAILABLE. Call immediately.";
+      locPart = "Loc: UNAVAILABLE. Call immediately.";
     }
 
-    String payload = "SOS! Crash detected.\nTime: $timestamp\n$locText";
-    if (payload.length > 150) {
-      payload = payload.substring(0, 150);
+    final String trailing = "SOS! Crash detected.\nTime: $timestamp";
+    final String payload;
+    if (locPart.length >= 150) {
+      // Edge case: URL alone fills the limit — send it without truncation
+      payload = locPart;
+    } else {
+      final int remaining = 150 - locPart.length - 1; // -1 for the separating \n
+      if (remaining <= 0) {
+        payload = locPart;
+      } else if (trailing.length <= remaining) {
+        payload = "$locPart\n$trailing";
+      } else {
+        payload = "$locPart\n${trailing.substring(0, remaining)}";
+      }
     }
 
     debugPrint("SosService: Delegating SMS and Call to UI Isolate to bypass restrictions.");

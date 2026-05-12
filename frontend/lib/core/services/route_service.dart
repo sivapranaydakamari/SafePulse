@@ -166,6 +166,13 @@ class RouteService {
       // Label routes based on risk
       _labelRoutes(routeOptions);
 
+      // Fix 7: override labels when backend has no crime zone data
+      if (data['riskDataAvailable'] == false) {
+        for (final route in routeOptions) {
+          route.label = 'Safety data unavailable';
+        }
+      }
+
       debugPrint('✅ Returning ${routeOptions.length} analyzed routes');
       return routeOptions;
 

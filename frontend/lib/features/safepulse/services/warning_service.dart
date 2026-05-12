@@ -17,6 +17,7 @@ class WarningService {
   final double distractionLimitMs = 1.0; // ~3.6 km/h
   
   bool _isScreenOn = true;
+  bool get isScreenOn => _isScreenOn;
   StreamSubscription<ScreenStateEvent>? _screenStateSub;
   
   Function(int seconds)? onDistractionUpdate;

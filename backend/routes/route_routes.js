@@ -31,12 +31,16 @@ router.post('/suggest', requireAuth, async (req, res) => {
     const riskZones = await riskIncidentRepository.getRiskZonesForRoutes(routes);
     const scoredRoutes = routeScoring.scoreRoutes(routes, riskZones);
 
+    // Fix 7: flag when MongoDB CrimeZone collection is empty (all scores == 0)
+    const riskDataAvailable = scoredRoutes.some(r => r.riskScore > 0);
+
     const response = {
       success: true,
       start,
       destination,
       routeCount: scoredRoutes.length,
       riskZoneCount: riskZones.length,
+      riskDataAvailable,
       routes: scoredRoutes.map((route, index) => formatRoute(route, index, riskZones.length)),
     };
 
