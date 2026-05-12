@@ -19,6 +19,9 @@ class RealtimeTrackingService {
   bool _disposed = false;
   String? _userId;
   String? _mongoUserId;
+  // Circle IDs the current user belongs to — written to Firestore so Safety Circle
+  // map queries can filter with .where('circleIds', arrayContains: circleId).
+  List<String> _circleIds = [];
 
   Stream<Map<String, dynamic>> get events => _events.stream;
 
@@ -67,6 +70,12 @@ class RealtimeTrackingService {
     } catch (e) {
       return TrackingStatus.failedNetworkError;
     }
+  }
+
+  /// Call this whenever the set of circles the user belongs to changes so that
+  /// subsequent Firestore location writes include the correct circleIds array.
+  void setCircleIds(List<String> ids) {
+    _circleIds = List<String>.from(ids);
   }
 
   void sendTrackingUpdate({
@@ -129,6 +138,9 @@ class RealtimeTrackingService {
           'ts': FieldValue.serverTimestamp(),
           'userId': uid,
           'mongoId': _mongoUserId ?? '',
+          // circleIds is an array so circle_map_page.dart can query with
+          // .where('circleIds', arrayContains: widget.circleId).
+          'circleIds': _circleIds,
         }, SetOptions(merge: true))
         .catchError((e) {
           debugPrint('[Firestore] Location sync failed: $e');

@@ -10,6 +10,10 @@ class WarningService {
   Timer? _distractionTimer;
   int _distractionSeconds = 0;
   
+  // SOURCE OF TRUTH: backend/config/speed_constants.js
+  //   WARNING_SPEED_KMH  = 65  →  65 / 3.6 ≈ 18.0 m/s
+  //   CRITICAL_SPEED_KMH = 90  →  90 / 3.6 ≈ 25.0 m/s
+  // If you change either value, update speed_constants.js first, then mirror here.
   static const double kSpeedWarningMs = 18.0;   // 65 km/h
   static const double kSpeedCriticalMs = 25.0;  // 90 km/h
 

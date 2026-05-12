@@ -16,8 +16,10 @@
  *   clearState(userId) — removes in-memory state when a journey ends
  */
 
-const WARNING_SPEED_KMH    = 65;   // over this → warn user
-const CRITICAL_SPEED_KMH  = 90;   // over this → notify circle
+// Speed thresholds are the single source of truth in backend/config/speed_constants.js.
+// The Dart equivalents in warning_service.dart (kSpeedWarningMs, kSpeedCriticalMs)
+// must be kept in sync manually — see the comment in speed_constants.js.
+const { WARNING_SPEED_KMH, CRITICAL_SPEED_KMH } = require('../config/speed_constants');
 const STATIONARY_TIMEOUT  = 120;  // seconds stopped before alert
 const PHONE_USE_SPEED_MIN = 10;   // km/h — using phone above this is dangerous
 

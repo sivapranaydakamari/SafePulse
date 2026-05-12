@@ -19,8 +19,22 @@ public class SosController {
         this.emergencyResponseService = emergencyResponseService;
     }
 
-    // TODO (future scope): inject EmergencyDispatchService and call dispatchEmergency()
-    // when SOS severity >= 4 or user has opted into government emergency notification.
+    /**
+     * Receives an SOS event and persists it as an {@link com.safepulse.backend.model.EmergencyEvent}.
+     *
+     * <p><strong>Routing note:</strong> This endpoint is reached <em>server-to-server only</em>.
+     * The Flutter mobile app calls {@code POST /api/sos} on the Node.js backend (port 3001),
+     * which forwards the event here internally after its own processing.
+     * The API gateway routes {@code /api/emergency} to Spring Boot and all {@code /api/sos/*}
+     * traffic to Node.js, so mobile clients never hit this controller directly.
+     *
+     * TODO (future scope): inject EmergencyDispatchService and call dispatchEmergency()
+     * when SOS severity >= 4 or user has opted into government emergency notification.
+     *
+     * @param request   the SOS payload forwarded by the Node.js backend.
+     * @param requestId the X-Request-ID header for end-to-end distributed tracing.
+     * @return 201 Created with the persisted emergency event.
+     */
     @PostMapping
     public ResponseEntity<EmergencyEventResponse> receiveSOS(
             @RequestBody SosRequest request,

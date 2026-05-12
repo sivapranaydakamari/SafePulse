@@ -113,6 +113,17 @@ App POST /api/emergency {latitude, longitude, severity}
   → EmergencyDispatchService.dispatchEmergency() [future: gov API]
 ```
 
+## SOS Routing — Server-to-Server Clarification
+
+The Flutter app and the API gateway interact with **two separate SOS endpoints** that serve different purposes:
+
+| Path | Handler | Called by | Purpose |
+|------|---------|-----------|---------|
+| `POST /api/sos/start` | Node.js `routes/sos.js` | Flutter app (via gateway) | Primary SOS — persists to MongoDB, triggers FCM notifications, SMS fallback |
+| `POST /api/sos` | Spring Boot `SosController` | Node.js backend (server-to-server) | Emergency event record for priority scoring and future government dispatch |
+
+The gateway routes `/api/emergency/*` to Spring Boot and all other `/api/*` traffic (including `/api/sos/*`) to Node.js. **The mobile client never calls Spring Boot directly.** After the Node.js SOS handler completes its own processing, it calls the Spring Boot `POST /api/sos` internally via `emergency_event_client.js` to create a priority-scored `EmergencyEvent` record. This separation keeps the emergency dispatch layer (Spring Boot) decoupled from the real-time notification layer (Node.js).
+
 ## Firestore Security Model
 
 Access to `live_locations` and `circles` is controlled by subcollection membership:

@@ -19,6 +19,10 @@ class AIService {
   Function()? onInferenceCompleted;
   double currentSpeedKmh = 0.0;
 
+  // Output tensor shape read from the loaded model — used to build the inference
+  // buffer dynamically so a model with shape [1] or [1,1] both work correctly.
+  List<int> _outputShape = [1, 1];
+
   bool _isProcessing = false;
   bool _resetting = false;
   bool _isModelLoaded = false;
@@ -46,10 +50,11 @@ class AIService {
       }
       _timesteps = inputShape[1];
       _features = inputShape[2];
+      _outputShape = outputShape;
       final warmInput = [List.generate(_timesteps, (_) => List.filled(_features, 0.0))];
-      final warmOutput = List.filled(1, 0.0).reshape([1, 1]);
+      final warmOutput = _buildOutputBuffer();
       _interpreter!.run(warmInput, warmOutput);
-      debugPrint('[AI] warm-up output shape: $outputShape → ${warmOutput[0][0]}');
+      debugPrint('[AI] warm-up output shape: $_outputShape → ${_extractProbability(warmOutput)}');
     } catch (e) {
       _isModelLoaded = false;
       onLog?.call("❌ ERROR: Failed to load AI model. Check assets folder.");
@@ -127,10 +132,10 @@ class AIService {
 
     try {
       var input = [windowToAnalyze];
-      var output = List.filled(1, 0.0).reshape([1, 1]);
+      final output = _buildOutputBuffer();
 
       _interpreter!.run(input, output);
-      double crashProbability = output[0][0];
+      final crashProbability = _extractProbability(output);
 
       if (crashProbability > 0.25) {
         debugPrint("AIService: AI CONFIRMED CRASH ($crashProbability)");
@@ -163,9 +168,9 @@ class AIService {
     if (_interpreter == null) return null;
     try {
       var input = [sensorWindow];
-      var output = List.filled(1, 0.0).reshape([1, 1]);
+      final output = _buildOutputBuffer();
       _interpreter!.run(input, output);
-      return output[0][0] as double;
+      return _extractProbability(output);
     } catch (e) {
       debugPrint('[AI] runInference error: $e');
       return null;
@@ -174,6 +179,30 @@ class AIService {
 
   void dispose() {
     _interpreter?.close();
+  }
+
+  // ── Output shape helpers ───────────────────────────────────────────────────
+
+  /// Builds a nested list matching [_outputShape] filled with 0.0.
+  /// Supports 1-D [n] and 2-D [rows, cols] tensors.
+  Object _buildOutputBuffer() {
+    if (_outputShape.length == 1) {
+      return List<double>.filled(_outputShape[0], 0.0);
+    }
+    return List<List<double>>.generate(
+      _outputShape[0],
+      (_) => List<double>.filled(_outputShape[1], 0.0),
+    );
+  }
+
+  /// Extracts the first scalar probability from the output buffer regardless
+  /// of whether the model output shape is [1] or [1, 1].
+  double _extractProbability(Object output) {
+    dynamic val = output;
+    while (val is List) {
+      val = val[0];
+    }
+    return (val as num).toDouble();
   }
 
   // ── Test-only surface ─────────────────────────────────────────────────────

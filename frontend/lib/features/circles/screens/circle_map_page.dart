@@ -67,10 +67,10 @@ class _CircleMapPageState extends State<CircleMapPage> {
 
     // SafePulse Problem Gap #5: Firestore is the primary real-time channel for member positions.
     // the existing _members list without replacing the REST polling path.
-    // Filtered by circleId to prevent reading other circles' locations (Fix 5).
+    // Uses arrayContains on 'circleIds' so a user in multiple circles appears in each one.
     _firestoreSubscription = FirebaseFirestore.instance
         .collection('live_locations')
-        .where('circleId', isEqualTo: widget.circleId)
+        .where('circleIds', arrayContains: widget.circleId)
         .snapshots()
         .listen(
       (snapshot) {

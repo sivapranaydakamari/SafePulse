@@ -427,7 +427,7 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Safety data unavailable — scores are estimates',
+                      'Safety scores are unavailable — crime data could not be loaded.',
                       style: TextStyle(color: Colors.amber, fontSize: 13),
                     ),
                   ),

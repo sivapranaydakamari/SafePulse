@@ -2,6 +2,7 @@
 // queued for offline retry.  No user interaction required after a crash is confirmed.
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:telephony/telephony.dart';
@@ -39,10 +40,50 @@ class SosService {
     } else {
       entries = prefs.getStringList('emergency_contacts') ?? [];
     }
-    emergencyContacts = entries.map((c) {
+    final rawPhones = entries.map((c) {
       final parts = c.split('|');
       return parts.length > 1 ? parts[1] : parts[0];
     }).where((phone) => phone.isNotEmpty).toList();
+
+    // E.164 validation: must be +<country code><7-14 digits>
+    final e164 = RegExp(r'^\+[1-9]\d{7,14}$');
+    final List<String> valid = [];
+    final List<String> invalid = [];
+    for (final phone in rawPhones) {
+      if (e164.hasMatch(phone)) {
+        valid.add(phone);
+      } else {
+        invalid.add(phone);
+      }
+    }
+
+    if (invalid.isNotEmpty) {
+      developer.log(
+        'Invalid emergency contact numbers detected: $invalid — '
+        'numbers must be in E.164 format (+<country code><digits>). '
+        'Please update in Settings before an emergency.',
+        name: 'SosService',
+        level: 900, // Level.SEVERE
+      );
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'safepulse_alerts_v1',
+        'System Alerts',
+        channelDescription: 'Warnings for GPS and Battery Saver.',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+      await FlutterLocalNotificationsPlugin().show(
+        997,
+        'Invalid Emergency Contact',
+        'Saved number${invalid.length > 1 ? 's' : ''} '
+        '${invalid.join(", ")} '
+        '${invalid.length > 1 ? 'are' : 'is'} not in E.164 format. '
+        'Please update in Settings.',
+        const NotificationDetails(android: androidDetails),
+      );
+    }
+
+    emergencyContacts = valid;
   }
 
   Function(String message)? onLog;
@@ -154,13 +195,45 @@ class SosService {
   Future<void> _executeEmergencySOSLocal(List<String> contacts, String payload) async {
     // Escalate to foreground so Android 14+ permits the SMS send.
     // Wait up to 3 s for the OS to confirm promotion before proceeding.
+    bool promotionSucceeded = false;
     final promoted = Completer<void>();
     final sub = FlutterBackgroundService().on('foregroundPromoted').listen((_) {
-      if (!promoted.isCompleted) promoted.complete();
+      if (!promoted.isCompleted) {
+        promotionSucceeded = true;
+        promoted.complete();
+      }
     });
     FlutterBackgroundService().invoke('setAsForeground');
     await Future.any([promoted.future, Future.delayed(const Duration(seconds: 3))]);
     unawaited(sub.cancel());
+
+    if (!promotionSucceeded) {
+      // Android 14+ denied foreground promotion — direct SMS would be silently
+      // dropped. Queue every number for retry and surface a notification.
+      for (final number in contacts) {
+        await LocalQueueService.instance.enqueue({
+          'type': 'sms',
+          'to': number,
+          'message': payload,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+        debugPrint('[SosService] Foreground promotion failed — SOS queued for $number');
+      }
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'safepulse_alerts_v1',
+        'System Alerts',
+        channelDescription: 'Warnings for GPS and Battery Saver.',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+      await FlutterLocalNotificationsPlugin().show(
+        998,
+        'SOS Queued',
+        'Could not send SOS immediately — queued for retry when conditions allow.',
+        const NotificationDetails(android: androidDetails),
+      );
+      return;
+    }
 
     for (String number in contacts) {
       try {
