@@ -19,4 +19,18 @@ class FeatureFlags {
   /// Advanced AI crash model with retrain pipeline (Phase 2 future scope).
   static const bool advancedAiEnabled =
       bool.fromEnvironment('ADVANCED_AI_ENABLED', defaultValue: false);
+
+  /// Generic lookup by string key — useful for test assertions and dynamic checks.
+  static bool isEnabled(String feature) {
+    switch (feature) {
+      case 'obd':
+        return obdEnabled;
+      case 'community_reports':
+        return communityReportsEnabled;
+      case 'advanced_ai':
+        return advancedAiEnabled;
+      default:
+        return false;
+    }
+  }
 }

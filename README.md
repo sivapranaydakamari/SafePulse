@@ -23,6 +23,8 @@
 
 ## Problem Statement
 
+> **Impact:** Road traffic crashes kill approximately **1.19 million people every year** and injure a further 20–50 million — making them the leading cause of death for children and young adults aged 5–29 (WHO Global Status Report on Road Safety, 2023). In India alone, more than 153,000 people died in road accidents in 2022 (MoRTH Annual Report 2022–23), equivalent to one fatality every 3.4 minutes. The majority of these deaths occur in the first hour after impact — the "golden hour" — when timely emergency dispatch and automated detection are most life-saving. SafePulse targets this gap directly: autonomous crash detection, hands-free SOS, and safety-scored routing integrated into a single mobile platform.
+
 Road accidents are among the leading causes of preventable death globally, yet widely used navigation tools like Google Maps are designed purely for route efficiency. Once a journey begins, these applications have no awareness of the traveller's safety. This creates five critical unaddressed gaps:
 
 | Gap | Impact |

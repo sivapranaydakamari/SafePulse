@@ -1,6 +1,23 @@
-// SafePulse Node.js Backend — internal microservice on port 3001.
-// Public traffic reaches this service only via the Proxy Gateway (port 3000).
-// Do NOT expose port 3001 directly in production.
+/**
+ * SafePulse Node.js Backend — internal microservice on port 3001.
+ *
+ * Public traffic must enter through the Proxy Gateway (gateway/index.js, port 3000).
+ * The gateway proxies all non-AI, non-emergency requests here after:
+ *   (1) attaching a UUID X-Request-ID header for distributed tracing,
+ *   (2) passing through the global rate limiter (300 req / 15 min per IP),
+ *   (3) validating the Firebase Auth JWT via the gateway's auth middleware,
+ *   (4) forwarding the request with the original Authorization header preserved, and
+ *   (5) surfacing a 502 to the client if this service is unreachable.
+ *
+ * Request lifecycle inside this service:
+ *   1. requestId middleware  — preserves or stamps X-Request-ID from gateway.
+ *   2. helmet                — sets secure HTTP response headers (CSP, HSTS, etc.).
+ *   3. globalLimiter         — secondary rate limit (safety net if gateway is bypassed in dev).
+ *   4. Route handlers        — /api/auth · /api/circle · /api/journey · /api/routes · /api/sos · …
+ *   5. Mongoose / realtimeHub — persistence to MongoDB Atlas + WebSocket fan-out to Safety Circle.
+ *
+ * Do NOT expose port 3001 directly in production.
+ */
 const express   = require('express');
 const mongoose  = require('mongoose');
 const cors      = require('cors');
