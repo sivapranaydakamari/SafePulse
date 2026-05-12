@@ -20,6 +20,8 @@ if analyzer.is_model_loaded:
 else:
     _log.warning("[AIService] TFLite model unavailable — running in heuristic mode")
 
+_inference_count: int = 0
+_last_inference_ms: float = 0.0
 _inference_stats: dict = {
     "total_inferences": 0,
     "crash_detections": 0,
@@ -65,6 +67,9 @@ def analyze_accident(payload: AccidentAnalysisRequest) -> dict:
     _start = _time.time()
     result = analyzer.analyze(readings)
     elapsed_ms = round((_time.time() - _start) * 1000, 2)
+    global _inference_count, _last_inference_ms
+    _inference_count += 1
+    _last_inference_ms = elapsed_ms
     _inference_stats["total_inferences"] += 1
     _inference_stats["total_ms"] += elapsed_ms
     if result.get("crashDetected"):
@@ -77,6 +82,12 @@ def ai_stats() -> dict:
     total = _inference_stats["total_inferences"]
     avg_ms = round(_inference_stats["total_ms"] / total, 2) if total > 0 else 0.0
     return {
+        "model_loaded": analyzer.is_model_loaded,
+        "model_path": analyzer.model_path.name,
+        "inference_count": _inference_count,
+        "last_inference_ms": _last_inference_ms,
+        "fallback_active": not analyzer.is_model_loaded,
+        # legacy fields kept for backward compatibility
         "total_inferences": total,
         "crash_detections": _inference_stats["crash_detections"],
         "avg_inference_ms": avg_ms,

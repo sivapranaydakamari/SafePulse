@@ -1,0 +1,9 @@
+{
+  "@@locale": "hi",
+  "@@last_modified": "2026-05-12",
+  "appName": "SafePulse",
+  "sosButtonLabel": "SOS",
+  "overspeedWarning": "आप गति सीमा से अधिक हैं",
+  "noContactsWarning": "कोई आपातकालीन संपर्क नहीं मिला",
+  "safeRouteLabel": "सबसे सुरक्षित मार्ग"
+}

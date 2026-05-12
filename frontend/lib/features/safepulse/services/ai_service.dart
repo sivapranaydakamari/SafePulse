@@ -9,7 +9,7 @@ import '../../../core/services/api_service.dart';
 class AIService {
   Interpreter? _interpreter;
   final List<List<double>> _sensorBuffer = [];
-  
+
   Function(double probability)? onCrashDetected;
   Function(String message)? onLog;
   Function()? onInferenceAttempt;
@@ -25,21 +25,33 @@ class AIService {
 
   Future<void> initialize() async {
     try {
-      _interpreter = await Interpreter.fromAsset('assets/crash_model.tflite');
+      final options = InterpreterOptions()..addDelegate(XNNPackDelegate());
+      _interpreter = await Interpreter.fromAsset('assets/crash_model.tflite', options: options);
       _isModelLoaded = true;
       onLog?.call("🧠 TFLite AI Crash Model Loaded!");
-      print("AIService: TFLite Model Loaded!");
+      debugPrint("AIService: TFLite Model Loaded!");
       debugPrint('[AIService] TFLite status: $modelStatus');
+
+      // Warm-up inference to confirm the model executes (not just loaded).
+      final inputShape = _interpreter!.getInputTensor(0).shape;
+      final outputShape = _interpreter!.getOutputTensor(0).shape;
+      final timesteps = inputShape.length >= 2 ? inputShape[1] : 250;
+      final features = inputShape.length >= 3 ? inputShape[2] : 6;
+      final warmInput = [List.generate(timesteps, (_) => List.filled(features, 0.0))];
+      final warmOutput = List.filled(1, 0.0).reshape([1, 1]);
+      _interpreter!.run(warmInput, warmOutput);
+      debugPrint('[AI] warm-up output shape: $outputShape → ${warmOutput[0][0]}');
     } catch (e) {
       _isModelLoaded = false;
       onLog?.call("❌ ERROR: Failed to load AI model. Check assets folder.");
-      print("AIService: TFLite Model FAILED TO LOAD! Error: $e");
+      debugPrint("AIService: TFLite Model FAILED TO LOAD! Error: $e");
+      rethrow;
     }
   }
 
   void addData(List<double> data) {
     if (_resetting) return;
-    
+
     _sensorBuffer.add(data);
 
     if (_sensorBuffer.length > 250) {
@@ -52,7 +64,7 @@ class AIService {
     if (gForce > 3.0 && _sensorBuffer.length == 250) {
       if (!_isProcessing) {
         onLog?.call("⚠️ IMPACT: ${gForce.toStringAsFixed(1)} Gs. AI Analyzing...");
-        print("AIService: IMPACT DETECTED! G-Force: ${gForce.toStringAsFixed(1)}");
+        debugPrint("AIService: IMPACT DETECTED! G-Force: ${gForce.toStringAsFixed(1)}");
         unawaited(_runAIAnalysis(List.from(_sensorBuffer), gForce));
         if (!_resetting) {
           _sensorBuffer.clear();
@@ -80,13 +92,13 @@ class AIService {
       onInferenceCompleted?.call();
       return;
     }
-    
+
     if (_interpreter == null) {
       if (maxGForce > 3.5) { // Lowered to 3.5 for manual testing
         _recentSpikeCount++;
-        print("AIService: INTERPRETER NULL. Spike count: $_recentSpikeCount / 2");
+        debugPrint("AIService: INTERPRETER NULL. Spike count: $_recentSpikeCount / 2");
         if (_recentSpikeCount >= 2) {
-          print("AIService: FALLBACK CRASH TRIGGERED!");
+          debugPrint("AIService: FALLBACK CRASH TRIGGERED!");
           onLog?.call("⚠️ Basic Threshold Crash Detected! (AI offline)");
           onCrashDetected?.call(1.0);
         } else {
@@ -111,24 +123,40 @@ class AIService {
       double crashProbability = output[0][0];
 
       if (crashProbability > 0.25) {
-        print("AIService: AI CONFIRMED CRASH ($crashProbability)");
+        debugPrint("AIService: AI CONFIRMED CRASH ($crashProbability)");
         onCrashDetected?.call(crashProbability);
       } else {
-        print("AIService: AI FILTERED FALSE ALARM ($crashProbability)");
+        debugPrint("AIService: AI FILTERED FALSE ALARM ($crashProbability)");
         onLog?.call("✅ AI Filtered: Just a drop/bump. (${(crashProbability * 100).toStringAsFixed(1)}%)");
       }
     } catch (e) {
-      print("AIService: AI ERROR EXCEPTION: $e");
+      debugPrint("AIService: AI ERROR EXCEPTION: $e");
       onLog?.call("❌ AI Error: $e. Falling back to basic threshold.");
       if (maxGForce > 3.5) { // Lowered to 3.5 for manual testing
-        print("AIService: FALLBACK THRESHOLD MET! Triggering SOS.");
+        debugPrint("AIService: FALLBACK THRESHOLD MET! Triggering SOS.");
         onCrashDetected?.call(1.0);
       } else {
-        print("AIService: FALLBACK THRESHOLD NOT MET. ($maxGForce <= 3.5)");
+        debugPrint("AIService: FALLBACK THRESHOLD NOT MET. ($maxGForce <= 3.5)");
       }
     } finally {
       _isProcessing = false;
       onInferenceCompleted?.call();
+    }
+  }
+
+  /// Public inference entry point for integration tests and diagnostics.
+  /// Returns the raw crash probability from the TFLite model, or null if
+  /// the model is not loaded or inference fails.
+  Future<double?> runInference(List<List<double>> sensorWindow) async {
+    if (_interpreter == null) return null;
+    try {
+      var input = [sensorWindow];
+      var output = List.filled(1, 0.0).reshape([1, 1]);
+      _interpreter!.run(input, output);
+      return output[0][0] as double;
+    } catch (e) {
+      debugPrint('[AI] runInference error: $e');
+      return null;
     }
   }
 

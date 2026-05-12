@@ -1,5 +1,6 @@
 // lib/core/services/places_service.dart
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 
@@ -28,7 +29,7 @@ class PlacesService {
         longitude: item['lng'] != null ? (item['lng'] is String ? double.parse(item['lng']) : item['lng'].toDouble()) : 0.0,
       )).toList();
     } catch (e) {
-      print('Error searching places: $e');
+      debugPrint('Error searching places: $e');
       return [];
     }
   }
@@ -45,7 +46,7 @@ class PlacesService {
         longitude: suggestion.longitude,
       );
     } catch (e) {
-      print('Error getting place details: $e');
+      debugPrint('Error getting place details: $e');
       return null;
     }
   }

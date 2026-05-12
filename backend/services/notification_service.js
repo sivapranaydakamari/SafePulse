@@ -98,4 +98,6 @@ async function broadcastToCircle(tokens, title, body, data = {}) {
   return sendPushNotification(tokens, title, body, data);
 }
 
-module.exports = { sendSMS, sendPushNotification, sendToUser, broadcastToCircle };
+function isFcmReady() { return firebaseApp !== null; }
+
+module.exports = { sendSMS, sendPushNotification, sendToUser, broadcastToCircle, isFcmReady };

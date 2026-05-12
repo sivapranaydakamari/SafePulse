@@ -55,23 +55,7 @@ function riskLabel(score) {
   return { type: 'RISKY', color: 'red', label: 'Risky' };
 }
 
-function createSyntheticVariant(base, index) {
-  const syntheticScore = Math.min(100, base.riskScore + 20 + index * 7);
-  const { type, color, label } = riskLabel(syntheticScore);
-
-  return {
-    id: `r${index + 1}`,
-    duration: Math.round(base.duration * (1 - 0.08 * Math.max(0, 3 - index))),
-    distance: Math.round(base.distance * (1 - 0.06 * Math.max(0, 3 - index))),
-    polyline: base.polyline,
-    riskScore: syntheticScore,
-    type,
-    color,
-    label,
-    synthetic: true,
-  };
-}
-
+// Only real OSRM routes are returned; no synthetic variants are fabricated.
 function scoreRoutes(routes, riskZones = []) {
   const scored = routes.map(route => {
     const score = routeRiskScore(route.polyline, riskZones);

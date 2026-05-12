@@ -1,5 +1,6 @@
 // lib/core/services/route_service.dart
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/route_models.dart';
 import '../config/app_config.dart';
@@ -16,7 +17,7 @@ class RouteService {
     required double endLng,
   }) async {
     try {
-      print('🔍 Fetching routes from backend...');
+      debugPrint('🔍 Fetching routes from backend...');
       
       // Call your existing backend API
       final url = Uri.parse(AppConfig.routeSuggestUrl);
@@ -43,7 +44,7 @@ class RouteService {
       }
 
       final data = json.decode(response.body);
-      print('✅ Received ${data['routeCount'] ?? 0} routes from backend');
+      debugPrint('✅ Received ${data['routeCount'] ?? 0} routes from backend');
 
       // Parse routes from backend response
       List<RouteOption> routeOptions = [];
@@ -150,7 +151,7 @@ class RouteService {
 
       // If backend didn't provide routes, fetch from OSRM directly
       if (routeOptions.isEmpty) {
-        print('⚠️ No routes from backend, fetching from OSRM...');
+        debugPrint('⚠️ No routes from backend, fetching from OSRM...');
         routeOptions = await _fetchRoutesFromOSRM(
           startLat: startLat,
           startLng: startLng,
@@ -165,15 +166,15 @@ class RouteService {
       // Label routes based on risk
       _labelRoutes(routeOptions);
 
-      print('✅ Returning ${routeOptions.length} analyzed routes');
+      debugPrint('✅ Returning ${routeOptions.length} analyzed routes');
       return routeOptions;
 
     } catch (e) {
-      print('❌ Error getting routes: $e');
+      debugPrint('❌ Error getting routes: $e');
       
       // Fallback: Try OSRM directly if backend fails
       try {
-        print('🔄 Trying OSRM fallback...');
+        debugPrint('🔄 Trying OSRM fallback...');
         return await _fetchRoutesFromOSRM(
           startLat: startLat,
           startLng: startLng,
@@ -181,7 +182,7 @@ class RouteService {
           endLng: endLng,
         );
       } catch (osrmError) {
-        print('❌ OSRM fallback also failed: $osrmError');
+        debugPrint('❌ OSRM fallback also failed: $osrmError');
         rethrow;
       }
     }

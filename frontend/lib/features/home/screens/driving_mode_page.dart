@@ -66,6 +66,7 @@ class _DrivingModePageState extends State<DrivingModePage> {
   late Color _routeColor;
   Timer? _statusTimer;
   bool _isOpeningSOS = false;
+  bool _disposed = false;
 
   @override
   void initState() {
@@ -103,7 +104,7 @@ class _DrivingModePageState extends State<DrivingModePage> {
       }
 
       final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       ).timeout(const Duration(seconds: 8));
 
       if (mounted) {
@@ -130,6 +131,7 @@ class _DrivingModePageState extends State<DrivingModePage> {
 
   @override
   void dispose() {
+    _disposed = true;
     _positionSub?.cancel();
     _brakingSub?.cancel();
     _crashSub?.cancel();
@@ -266,25 +268,29 @@ class _DrivingModePageState extends State<DrivingModePage> {
   }
 
   Future<void> _reroute(LatLng from) async {
-    final navProvider = context.read<NavigationProvider>();
-    if (navProvider.isLoading || _polylinePoints.isEmpty) return;
-    
-    final dest = _polylinePoints.last;
-    await navProvider.fetchRoutes(
-      startLat: from.latitude,
-      startLng: from.longitude,
-      destLat: dest.latitude,
-      destLng: dest.longitude,
-    );
+    try {
+      final navProvider = context.read<NavigationProvider>();
+      if (navProvider.isLoading || _polylinePoints.isEmpty) return;
 
-    if (!mounted) return;
-    if (navProvider.routes.isNotEmpty) {
-      final bestRoute = navProvider.routes.first;
-      setState(() {
-        _polylinePoints = bestRoute.polyline.map((p) => LatLng(p[0], p[1])).toList();
-        _closestPointIndex = 0;
-        _isOffRoute = false;
-      });
+      final dest = _polylinePoints.last;
+      await navProvider.fetchRoutes(
+        startLat: from.latitude,
+        startLng: from.longitude,
+        destLat: dest.latitude,
+        destLng: dest.longitude,
+      );
+
+      if (!mounted || _disposed) return;
+      if (navProvider.routes.isNotEmpty) {
+        final bestRoute = navProvider.routes.first;
+        setState(() {
+          _polylinePoints = bestRoute.polyline.map((p) => LatLng(p[0], p[1])).toList();
+          _closestPointIndex = 0;
+          _isOffRoute = false;
+        });
+      }
+    } catch (e, stack) {
+      debugPrint('[DrivingMode] reroute failed: $e\n$stack');
     }
   }
 
@@ -434,7 +440,7 @@ class _SafetyAiCard extends StatelessWidget {
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isDanger ? Colors.red.withOpacity(0.9) : AppColors.cardBg.withOpacity(0.9),
+          color: isDanger ? Colors.red.withValues(alpha: 0.9) : AppColors.cardBg.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: isDanger ? Colors.white : AppColors.surface),
         ),
@@ -463,7 +469,7 @@ class _StatsBar extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppColors.cardBg.withOpacity(0.9), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: AppColors.cardBg.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -506,7 +512,7 @@ class _AlertWidget extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: (alert['color'] as Color).withOpacity(0.9), borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(color: (alert['color'] as Color).withValues(alpha: 0.9), borderRadius: BorderRadius.circular(14)),
         child: Row(children: [
           Icon(alert['icon'] as IconData, color: Colors.white, size: 18),
           const SizedBox(width: 10),

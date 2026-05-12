@@ -53,8 +53,13 @@ class _CircleMapPageState extends State<CircleMapPage> {
     await _getUserLocation();
     await _fetchMembers();
 
-    _locationTimer =
-        Timer.periodic(const Duration(seconds: 10), (_) => _updateMyLocationOnServer());
+    _locationTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      try {
+        await _updateMyLocationOnServer();
+      } catch (e, stack) {
+        debugPrint('[CircleMap] location update failed: $e\n$stack');
+      }
+    });
     _fetchMembersTimer =
         Timer.periodic(const Duration(seconds: 15), (_) => _fetchMembers());
   }
@@ -68,7 +73,7 @@ class _CircleMapPageState extends State<CircleMapPage> {
       }
       setState(() => _hasLocationPermission = true);
 
-      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
       setState(() { _myLocation = LatLng(pos.latitude, pos.longitude); _isLoading = false; });
       _updateMyLocationOnServer();
     } catch (e) {
@@ -79,7 +84,7 @@ class _CircleMapPageState extends State<CircleMapPage> {
 
   Future<void> _updateMyLocationOnServer() async {
     try {
-      final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
       if (mounted) setState(() => _myLocation = LatLng(pos.latitude, pos.longitude));
 
       int batteryLevel = 100;
@@ -267,7 +272,7 @@ class _CircleMapPageState extends State<CircleMapPage> {
       decoration: BoxDecoration(
         color: AppColors.cardBg,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, -4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, -4))],
       ),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
       child: Column(
@@ -300,7 +305,7 @@ class _CircleMapPageState extends State<CircleMapPage> {
                           margin: const EdgeInsets.only(right: 12),
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: isSelected ? AppColors.primary.withOpacity(0.15) : AppColors.surface,
+                            color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : AppColors.surface,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                                 color: isSelected ? AppColors.primary : Colors.transparent, width: 1.5),
@@ -367,7 +372,7 @@ class _PermissionDeniedView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.location_off, size: 80, color: AppColors.primary.withOpacity(0.4)),
+            Icon(Icons.location_off, size: 80, color: AppColors.primary.withValues(alpha: 0.4)),
             const SizedBox(height: 24),
             const Text('Location Permission Required',
                 style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
@@ -422,7 +427,7 @@ class _MemberInfoCard extends StatelessWidget {
         color: AppColors.cardBg,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.surface),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 12)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 12)],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -483,9 +488,9 @@ class _MemberInfoCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF25D366).withOpacity(0.15),
+                  color: const Color(0xFF25D366).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF25D366).withOpacity(0.5)),
+                  border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.5)),
                 ),
                 child: const Row(children: [
                   Icon(Icons.message, color: Color(0xFF25D366), size: 14),
@@ -529,7 +534,7 @@ class _AvatarMarker extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: borderColor, width: 2.5),
               boxShadow: [BoxShadow(
-                color: isMe ? AppColors.primary.withOpacity(0.5) : Colors.black.withOpacity(0.4),
+                color: isMe ? AppColors.primary.withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.4),
                 blurRadius: isSelected ? 12 : 6,
                 spreadRadius: isSelected ? 3 : 1,
               )],
@@ -552,7 +557,7 @@ class _AvatarMarker extends StatelessWidget {
             decoration: BoxDecoration(
               color: isMe ? AppColors.primary : AppColors.cardBg,
               borderRadius: BorderRadius.circular(8),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 4)],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4)],
             ),
             child: Text(label,
                 style: TextStyle(

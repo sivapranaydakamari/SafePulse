@@ -88,6 +88,7 @@ Emergency Svc  AI Accident Service    (tracking:update /      │
 | **Spring Boot Service** | Java · Spring Boot 3 | Emergency event persistence, priority scoring, lifecycle management (ACTIVE → RESOLVED) |
 | **Python AI Service** | Python · FastAPI | TFLite crash analysis, heuristic fallback, phone-drop filtering, inference stats |
 | **Database** | MongoDB | Users, circles, SOS records, risk incidents, journey logs |
+| **Firebase / Firestore** | Firebase Auth, FCM, cloud_firestore | Auth and push notifications are active. Firestore role is emergency SOS event mirroring only; primary real-time sync uses REST + WebSocket. |
 
 ---
 

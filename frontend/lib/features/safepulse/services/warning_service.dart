@@ -10,8 +10,10 @@ class WarningService {
   Timer? _distractionTimer;
   int _distractionSeconds = 0;
   
+  static const double kSpeedWarningMs = 18.0;   // 65 km/h
+  static const double kSpeedCriticalMs = 25.0;  // 90 km/h
+
   final int distractionDemoThreshold = 15;
-  final double overspeedLimitMs = 2.0; // ~7.2 km/h
   final double distractionLimitMs = 1.0; // ~3.6 km/h
   
   bool _isScreenOn = true;
@@ -48,7 +50,7 @@ class WarningService {
 
   void handleSpeed(double speedMs) {
     // 1. Overspeed Logic
-    if (speedMs > overspeedLimitMs) {
+    if (speedMs > kSpeedWarningMs) {
       _triggerOverspeedWarning(speedMs);
     }
 

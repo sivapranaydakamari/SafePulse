@@ -10,6 +10,7 @@ const morgan    = require('morgan');
 const rateLimit = require('express-rate-limit');
 const requestId = require('./middleware/requestId');
 const { createRealtimeHub } = require('./services/realtime_hub');
+const { isFcmReady } = require('./services/notification_service');
 
 dotenv.config();
 
@@ -82,6 +83,7 @@ app.get('/health', (req, res) => {
     db: 'connected',
     service: 'safepulse-api-gateway',
     realtime: realtimeHub.isEnabled,
+    fcm: isFcmReady() ? 'ok' : 'not_configured',
   });
 });
 

@@ -1,8 +1,9 @@
 // lib/features/safepulse/services/sos_service.dart
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:telephony/telephony.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/repositories/sos_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -47,7 +48,7 @@ class SosService {
     double speedMs = 0.0,
   }) async {
     // Fire online in background
-    print("SosService: Firing ONLINE SOS...");
+    debugPrint("SosService: Firing ONLINE SOS...");
     unawaited(
       _sosRepo.sendSafePulseSOS(
         lat,
@@ -59,7 +60,7 @@ class SosService {
     );
 
     // ALWAYS execute offline emergency actions
-    print("SosService: Proceeding to OFFLINE SOS...");
+    debugPrint("SosService: Proceeding to OFFLINE SOS...");
     await triggerOfflineSOS(
       lat,
       lng,
@@ -83,6 +84,19 @@ class SosService {
     if (emergencyContacts.isEmpty) {
       onLog?.call(
         "⚠️ No emergency contacts configured. Please add contacts in Settings before using SOS.",
+      );
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'safepulse_alerts_v1',
+        'System Alerts',
+        channelDescription: 'Warnings for GPS and Battery Saver.',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+      await FlutterLocalNotificationsPlugin().show(
+        999,
+        'SOS Warning',
+        'No emergency contacts found. Add contacts before starting a journey.',
+        const NotificationDetails(android: androidDetails),
       );
       return;
     }
@@ -108,10 +122,10 @@ class SosService {
       payload = payload.substring(0, 150);
     }
 
-    print("SosService: Delegating SMS and Call to UI Isolate to bypass restrictions.");
+    debugPrint("SosService: Delegating SMS and Call to UI Isolate to bypass restrictions.");
     onEmergencySOS?.call(emergencyContacts, payload);
 
-    print("SosService: Executing fallback SOS directly from background isolate.");
+    debugPrint("SosService: Executing fallback SOS directly from background isolate.");
     _executeEmergencySOSLocal(emergencyContacts, payload);
   }
 
@@ -119,26 +133,26 @@ class SosService {
     for (String number in contacts) {
       try {
         await telephony.sendSms(to: number, message: payload);
-        print("[SosService Background] SMS sent to $number");
+        debugPrint("[SosService Background] SMS sent to $number");
       } catch (e) {
-        print("[SosService Background] SMS Failed to $number: $e");
+        debugPrint("[SosService Background] SMS Failed to $number: $e");
       }
       await Future.delayed(const Duration(milliseconds: 500));
     }
 
     if (contacts.isNotEmpty) {
-      print("[SosService Background] Triggering call to: ${contacts.first}");
+      debugPrint("[SosService Background] Triggering call to: ${contacts.first}");
       try {
         await FlutterPhoneDirectCaller.callNumber(contacts.first);
       } catch (e) {
-        print("[SosService Background] Call Failed with direct caller: $e, falling back to url_launcher...");
+        debugPrint("[SosService Background] Call Failed with direct caller: $e, falling back to url_launcher...");
         try {
           final Uri url = Uri.parse("tel:${contacts.first}");
           if (await canLaunchUrl(url)) {
             await launchUrl(url);
           }
         } catch (e2) {
-          print("[SosService Background] url_launcher also failed: $e2");
+          debugPrint("[SosService Background] url_launcher also failed: $e2");
         }
       }
     }
