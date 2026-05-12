@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../config/feature_flags.dart';
 
 /// FUTURE SCOPE: OBD-II Vehicle Hardware Integration
 /// Planned: BLE connection to ELM327 adapters for direct speed/RPM telemetry.
@@ -19,6 +20,10 @@ abstract class OBDService {
 /// Stub — safe no-op until OBD-II is implemented.
 class OBDServiceStub implements OBDService {
   @override Future connect() async {
+    if (!FeatureFlags.obdEnabled) {
+      if (kDebugMode) debugPrint('[OBD] Stub: OBD_ENABLED flag is false — skipping connect()');
+      return false;
+    }
     if (kDebugMode) debugPrint('[OBD] Stub: connect() — OBD-II hardware not implemented');
     return false;
   }

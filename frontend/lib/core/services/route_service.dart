@@ -143,6 +143,7 @@ class RouteService {
             crimeHotspots: hotspots,
             riskSegments: riskSegments,
             summary: route['type'] ?? 'Route ${i + 1}',
+            riskDataAvailable: data['riskDataAvailable'] != false,
           );
 
           routeOptions.add(routeOption);
@@ -166,7 +167,7 @@ class RouteService {
       // Label routes based on risk
       _labelRoutes(routeOptions);
 
-      // Fix 7: override labels when backend has no crime zone data
+      // Override labels when backend has no crime zone data
       if (data['riskDataAvailable'] == false) {
         for (final route in routeOptions) {
           route.label = 'Safety data unavailable';

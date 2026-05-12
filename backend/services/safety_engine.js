@@ -1,5 +1,19 @@
 /**
- * safety_engine.js
+ * SafePulse Safety Engine — Problem Gap #1 (over-speed) and #5 (Safety Circle).
+ *
+ * Evaluates real-time sensor data from the WebSocket tracking stream and
+ * returns a safety status verdict for each connected user.  The verdict drives
+ * TTS warnings on the mobile app and optional Safety Circle notifications.
+ *
+ * Constants:
+ *   WARNING_SPEED_KMH  — speed above which a verbal warning is issued
+ *   CRITICAL_SPEED_KMH — speed above which the Safety Circle is notified
+ *   STATIONARY_TIMEOUT — seconds of zero movement before a stationary alert
+ *   PHONE_USE_SPEED_MIN — minimum speed (km/h) at which phone use is flagged
+ *
+ * Exported functions:
+ *   evaluateSafety(userId, speedKmh, isPhoneOn) → { status, message, warningSent, circleNotified }
+ *   clearState(userId) — removes in-memory state when a journey ends
  */
 
 const WARNING_SPEED_KMH    = 65;   // over this → warn user

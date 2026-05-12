@@ -1,6 +1,9 @@
 import logging
+import os
+import subprocess
+import sys
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Header
 
 from app.schemas import AccidentAnalysisRequest, AccidentAnalysisResponse
 from app.services.crash_analyzer import CrashAnalyzer, SensorReading
@@ -83,13 +86,21 @@ _false_positive_count: int = 0
 @app.get("/metrics")
 def metrics() -> dict:
     total = _inference_stats["total_inferences"]
+    crash_detections = _inference_stats["crash_detections"]
+    avg_ms = round(_inference_stats["total_ms"] / total, 2) if total > 0 else 0.0
+    false_positive_rate = round(_false_positive_count / max(crash_detections, 1), 4)
+    # Drift alert: FP rate > 20 % or avg inference > 200 ms suggests model degradation.
+    drift_alert = false_positive_rate > 0.20 or avg_ms > 200
     return {
         "total_inferences": total,
-        "crash_detections": _inference_stats["crash_detections"],
+        "crash_detections": crash_detections,
         "false_positives_logged": _false_positive_count,
-        "avg_inference_ms": round(_inference_stats["total_ms"] / total, 2) if total > 0 else 0.0,
+        "false_positive_rate": false_positive_rate,
+        "avg_inference_ms": avg_ms,
         "model_runtime": analyzer.runtime_name,
         "model_loaded": analyzer.is_model_loaded,
+        "drift_alert": drift_alert,
+        "retraining_recommended": drift_alert,
     }
 
 
@@ -99,6 +110,25 @@ def log_false_positive_endpoint() -> dict:
     _false_positive_count += 1
     analyzer.log_false_positive(0.0, 0.0)
     return {"logged": True, "total_false_positives": _false_positive_count}
+
+
+_ADMIN_TOKEN = os.getenv("RETRAIN_ADMIN_TOKEN", "")
+
+
+@app.post("/retrain")
+def trigger_retrain(x_admin_token: str = Header(default="")) -> dict:
+    """Admin-only endpoint: launch retrain.py as a subprocess and return immediately."""
+    if not _ADMIN_TOKEN or x_admin_token != _ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    training_script = os.path.join(os.path.dirname(__file__), "..", "training", "retrain.py")
+    if not os.path.exists(training_script):
+        raise HTTPException(status_code=404, detail="Training script not found")
+    subprocess.Popen(
+        [sys.executable, training_script],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return {"status": "retrain_started", "script": training_script}
 
 
 @app.get("/ai/stats")

@@ -1,3 +1,6 @@
+// SafePulse Node.js Backend — internal microservice on port 3001.
+// Public traffic reaches this service only via the Proxy Gateway (port 3000).
+// Do NOT expose port 3001 directly in production.
 const express   = require('express');
 const mongoose  = require('mongoose');
 const cors      = require('cors');

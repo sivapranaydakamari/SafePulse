@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
+import '../config/feature_flags.dart';
 
 /// FUTURE SCOPE: Community Safety Reporting
 /// Planned: crowd-sourced hazard pins (potholes, flooding, accidents).
@@ -35,6 +36,10 @@ class CommunityReportServiceStub implements CommunityReportService {
     required String hazardType,
     String? description,
   }) async {
+    if (!FeatureFlags.communityReportsEnabled) {
+      if (kDebugMode) debugPrint('[CommunityReport] COMMUNITY_REPORTS_ENABLED flag is false — skipping');
+      return false;
+    }
     if (kDebugMode) debugPrint('[CommunityReport] Stub: submitReport() — not yet implemented');
     return false;
   }
@@ -44,8 +49,10 @@ class CommunityReportServiceStub implements CommunityReportService {
     required double latitude,
     required double longitude,
     double radiusKm = 5.0,
-  }) async =>
-      [];
+  }) async {
+    if (!FeatureFlags.communityReportsEnabled) return [];
+    return [];
+  }
 }
 
 /// Partial implementation — posts hazard reports to the SafePulse backend.

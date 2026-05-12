@@ -5,8 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import '../../../core/services/api_service.dart';
 
+/// Runs on-device TFLite crash detection (Problem Gap #2).
+/// Expects a [batch=1, timesteps=250, features=6] model input.
 class AIService {
   Interpreter? _interpreter;
+  int _timesteps = 250;
+  int _features = 6;
   final List<List<double>> _sensorBuffer = [];
 
   Function(double probability)? onCrashDetected;
@@ -31,12 +35,18 @@ class AIService {
       debugPrint("AIService: TFLite Model Loaded!");
       debugPrint('[AIService] TFLite status: $modelStatus');
 
-      // Warm-up inference to confirm the model executes (not just loaded).
+      // Validate model shape strictly — fail fast rather than silently using defaults.
       final inputShape = _interpreter!.getInputTensor(0).shape;
       final outputShape = _interpreter!.getOutputTensor(0).shape;
-      final timesteps = inputShape.length >= 2 ? inputShape[1] : 250;
-      final features = inputShape.length >= 3 ? inputShape[2] : 6;
-      final warmInput = [List.generate(timesteps, (_) => List.filled(features, 0.0))];
+      if (inputShape.length < 3) {
+        throw StateError(
+          'TFLite model has unexpected input shape $inputShape'
+          ' — expected [batch, timesteps, features]',
+        );
+      }
+      _timesteps = inputShape[1];
+      _features = inputShape[2];
+      final warmInput = [List.generate(_timesteps, (_) => List.filled(_features, 0.0))];
       final warmOutput = List.filled(1, 0.0).reshape([1, 1]);
       _interpreter!.run(warmInput, warmOutput);
       debugPrint('[AI] warm-up output shape: $outputShape → ${warmOutput[0][0]}');
@@ -164,6 +174,20 @@ class AIService {
 
   void dispose() {
     _interpreter?.close();
+  }
+
+  // ── Test-only surface ─────────────────────────────────────────────────────
+
+  @visibleForTesting
+  bool isSpikeCountAboveThreshold(int threshold) => _recentSpikes.length >= threshold;
+
+  @visibleForTesting
+  int get recentSpikeCount => _recentSpikes.length;
+
+  @visibleForTesting
+  void simulateCrashTrigger(double probability) {
+    _recentSpikes.clear();
+    onCrashDetected?.call(probability);
   }
 
   Future<bool> _runServerAIAnalysis(List<List<double>> windowToAnalyze) async {

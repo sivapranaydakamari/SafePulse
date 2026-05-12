@@ -36,8 +36,20 @@ class RealtimeTrackingService {
     _mongoUserId = prefs.getString('mongoUserId') ?? prefs.getString('_id');
 
     try {
-      final uri = Uri.parse(AppConfig.realtimeUrl)
-          .replace(queryParameters: {'token': token});
+      var wsUri = Uri.parse(AppConfig.realtimeUrl);
+      // Normalise http/https → ws/wss
+      if (wsUri.scheme == 'https') {
+        wsUri = wsUri.replace(scheme: 'wss');
+      } else if (wsUri.scheme == 'http') {
+        wsUri = wsUri.replace(scheme: 'ws');
+      }
+      // Enforce wss:// for any non-localhost host in production
+      if (wsUri.scheme == 'ws' &&
+          wsUri.host != 'localhost' &&
+          wsUri.host != '127.0.0.1') {
+        wsUri = wsUri.replace(scheme: 'wss');
+      }
+      final uri = wsUri.replace(queryParameters: {'token': token});
       _socket = await WebSocket.connect(uri.toString());
       _socket!.listen(
         (raw) {

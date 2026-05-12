@@ -5,5 +5,20 @@
   "sosButtonLabel": "SOS",
   "overspeedWarning": "आप गति सीमा से अधिक हैं",
   "noContactsWarning": "कोई आपातकालीन संपर्क नहीं मिला",
-  "safeRouteLabel": "सबसे सुरक्षित मार्ग"
+  "safeRouteLabel": "सबसे सुरक्षित मार्ग",
+  "sosActivated": "SOS सक्रिय — आपातकालीन सर्कल से संपर्क हो रहा है",
+  "crashDetected": "दुर्घटना का पता चला — SOS ट्रिगर हो रहा है",
+  "overSpeedWarning": "गति {speed} km/h सुरक्षित सीमा से अधिक है — कृपया धीमा करें",
+  "@overSpeedWarning": {
+    "placeholders": {
+      "speed": { "type": "int" }
+    }
+  },
+  "safeRoute": "सुरक्षित मार्ग चुना गया",
+  "cancelSos": "SOS रद्द करें ({seconds}s)",
+  "@cancelSos": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  }
 }

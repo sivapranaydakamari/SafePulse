@@ -12,11 +12,13 @@ class NavigationProvider extends ChangeNotifier {
   List<GeocodeResult> _suggestions = [];
   List<RouteSuggestion> _routes = [];
   bool _isLoading = false;
+  bool _riskDataAvailable = true;
   String? _error;
 
   List<GeocodeResult> get suggestions => _suggestions;
   List<RouteSuggestion> get routes => _routes;
   bool get isLoading => _isLoading;
+  bool get riskDataAvailable => _riskDataAvailable;
   String? get error => _error;
 
   Future<void> searchDestination(String query) async {
@@ -52,12 +54,14 @@ class NavigationProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _routes = await _userRepo.getRouteSuggestions(
+      final result = await _userRepo.getRouteSuggestions(
         startLat: startLat,
         startLng: startLng,
         destLat: destLat,
         destLng: destLng,
       );
+      _routes = result.routes;
+      _riskDataAvailable = result.riskDataAvailable;
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -74,6 +78,7 @@ class NavigationProvider extends ChangeNotifier {
   void reset() {
     _suggestions = [];
     _routes = [];
+    _riskDataAvailable = true;
     _error = null;
     _isLoading = false;
     notifyListeners();

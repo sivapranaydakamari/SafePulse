@@ -1,5 +1,7 @@
-// lib/features/safepulse/services/sos_service.dart
+// SafePulse Problem Gap #3: autonomous SOS — SMS + direct call + server event,
+// queued for offline retry.  No user interaction required after a crash is confirmed.
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:telephony/telephony.dart';
@@ -25,12 +27,22 @@ class SosService {
   // No hardcoded fallback — sending SOS to unknown numbers is a production safety risk.
   Future<void> _loadContacts() async {
     final prefs = await SharedPreferences.getInstance();
-    final contactsJson = prefs.getStringList('emergency_contacts') ?? [];
-    emergencyContacts = contactsJson.map((c) {
+    // Try JSON-encoded list first, then fall back to legacy pipe-delimited strings.
+    List<String> entries;
+    final rawJson = prefs.getString('emergency_contacts');
+    if (rawJson != null && rawJson.trim().startsWith('[')) {
+      try {
+        entries = (jsonDecode(rawJson) as List).map((e) => e.toString()).toList();
+      } catch (_) {
+        entries = prefs.getStringList('emergency_contacts') ?? [];
+      }
+    } else {
+      entries = prefs.getStringList('emergency_contacts') ?? [];
+    }
+    emergencyContacts = entries.map((c) {
       final parts = c.split('|');
       return parts.length > 1 ? parts[1] : parts[0];
     }).where((phone) => phone.isNotEmpty).toList();
-    
   }
 
   Function(String message)? onLog;
@@ -140,8 +152,15 @@ class SosService {
   }
 
   Future<void> _executeEmergencySOSLocal(List<String> contacts, String payload) async {
-    // Escalate to foreground so Android 14+ permits the SMS send (Bug 3)
+    // Escalate to foreground so Android 14+ permits the SMS send.
+    // Wait up to 3 s for the OS to confirm promotion before proceeding.
+    final promoted = Completer<void>();
+    final sub = FlutterBackgroundService().on('foregroundPromoted').listen((_) {
+      if (!promoted.isCompleted) promoted.complete();
+    });
     FlutterBackgroundService().invoke('setAsForeground');
+    await Future.any([promoted.future, Future.delayed(const Duration(seconds: 3))]);
+    unawaited(sub.cancel());
 
     for (String number in contacts) {
       try {

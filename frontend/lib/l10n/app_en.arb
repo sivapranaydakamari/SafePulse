@@ -5,5 +5,20 @@
   "sosButtonLabel": "SOS",
   "overspeedWarning": "You are over the speed limit",
   "noContactsWarning": "No emergency contacts found",
-  "safeRouteLabel": "Safest route"
+  "safeRouteLabel": "Safest route",
+  "sosActivated": "SOS activated — contacting emergency circle",
+  "crashDetected": "Crash detected — triggering SOS",
+  "overSpeedWarning": "Speed {speed} km/h exceeds safe limit — please slow down",
+  "@overSpeedWarning": {
+    "placeholders": {
+      "speed": { "type": "int" }
+    }
+  },
+  "safeRoute": "Safe route selected",
+  "cancelSos": "Cancel SOS ({seconds}s)",
+  "@cancelSos": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  }
 }

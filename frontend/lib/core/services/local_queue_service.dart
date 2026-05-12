@@ -48,6 +48,17 @@ class LocalQueueService {
 
   Future<int> getPendingCount() async => (await getPending()).length;
 
+  /// Queues a location update for retry when the primary API call fails.
+  Future<void> queueLocationUpdate(double lat, double lon, double speed) async {
+    await enqueue({
+      'type': 'location_update',
+      'lat': lat,
+      'lon': lon,
+      'speed': speed,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
+
   /// Processes all queued events by calling [handler] for each.
   /// Events for which [handler] returns false are kept for the next retry.
   Future<void> processQueue(Future<bool> Function(Map<String, dynamic> event) handler) async {

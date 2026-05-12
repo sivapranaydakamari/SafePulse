@@ -13,6 +13,9 @@ import '../../../core/repositories/circle_repository.dart';
 import '../../../core/repositories/user_repository.dart';
 import '../../../core/theme/app_colors.dart';
 
+/// SafePulse Problem Gap #5: displays live Safety Circle member locations.
+/// Location updates arrive via Firestore real-time snapshots (primary) and
+/// WebSocket tracking events (supplementary).
 class CircleMapPage extends StatefulWidget {
   final String circleId;
   final String circleName;

@@ -406,11 +406,34 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
   }
 
   Widget _buildRouteList(List<RouteSuggestion> routes) {
+    final riskDataAvailable = context.read<NavigationProvider>().riskDataAvailable;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (!riskDataAvailable)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.15),
+                border: Border.all(color: Colors.amber),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.warning_amber, color: Colors.amber, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Safety data unavailable — scores are estimates',
+                      style: TextStyle(color: Colors.amber, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

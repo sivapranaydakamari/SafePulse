@@ -6,8 +6,8 @@
 //   • Firestore — emergency SOS event mirroring only (future scope)
 // Primary real-time sync uses REST + WebSocket (see api_service.dart).
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'l10n/app_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
@@ -101,17 +101,8 @@ class SafePulseApp extends StatelessWidget {
         title: 'SafePulse',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
-        // l10n scaffolding — run `flutter gen-l10n` then replace with
-        // AppLocalizations.localizationsDelegates / supportedLocales.
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: const [
-          Locale('en'),
-          Locale('hi'),
-        ],
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: const AppGate(),
       ),
     );

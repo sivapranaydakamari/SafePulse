@@ -1,6 +1,28 @@
-const admin = require('firebase-admin');
+const admin  = require('firebase-admin');
 const twilio = require('twilio');
-const path = require('path');
+const path   = require('path');
+const crypto = require('crypto');
+
+const FCM_PAYLOAD_KEY = process.env.FCM_PAYLOAD_KEY; // 32-byte hex key for AES-256-CBC
+
+/**
+ * Encrypts a plaintext string with AES-256-CBC for FCM data payloads.
+ * The mobile app decrypts using the same shared key stored in secure storage.
+ * Returns a base64 string of "iv:ciphertext" or the original text if the key
+ * is not configured (development / test environments).
+ */
+function encryptMessage(plaintext) {
+  if (!FCM_PAYLOAD_KEY || FCM_PAYLOAD_KEY.length < 64) return plaintext;
+  try {
+    const key = Buffer.from(FCM_PAYLOAD_KEY, 'hex');
+    const iv  = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+    const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+    return iv.toString('base64') + ':' + encrypted.toString('base64');
+  } catch (_) {
+    return plaintext;
+  }
+}
 
 // Twilio SMS
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -100,4 +122,4 @@ async function broadcastToCircle(tokens, title, body, data = {}) {
 
 function isFcmReady() { return firebaseApp !== null; }
 
-module.exports = { sendSMS, sendPushNotification, sendToUser, broadcastToCircle, isFcmReady };
+module.exports = { sendSMS, sendPushNotification, sendToUser, broadcastToCircle, isFcmReady, encryptMessage };

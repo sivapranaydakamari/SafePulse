@@ -103,6 +103,7 @@ class RouteOption {
   
   String? label; // e.g., "Safest Route", "Fastest Route"
   RouteRecommendationType? recommendationType;
+  bool riskDataAvailable;
 
   RouteOption({
     required this.id,
@@ -116,6 +117,7 @@ class RouteOption {
     required this.summary,
     this.label,
     this.recommendationType,
+    this.riskDataAvailable = true,
   });
 
   String get distanceText {
