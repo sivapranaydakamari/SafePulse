@@ -72,6 +72,13 @@ app.use('/api/ai/analyze', createProxyMiddleware({
   pathRewrite: { '^/api/ai/analyze': '/v1/accident/analyze' },
 }));
 
+// Python AI metrics endpoints (prediction logging, false-positive reporting)
+app.use('/api/ai/metrics', createProxyMiddleware({
+  target: AI_SERVICE_URL,
+  changeOrigin: true,
+  pathRewrite: { '^/api/ai/metrics': '/metrics' },
+}));
+
 // Spring Boot emergency dispatch microservice.
 // Reached server-to-server from Node.js only — NOT from the mobile app.
 app.use('/api/emergency', createProxyMiddleware({

@@ -5,8 +5,6 @@
  * seed JSON, or future external incident feeds.
  */
 const trafficWeather = require('./traffic_weather_service');
-// TODO (future scope): const weatherRisk = await trafficWeather.getWeatherRisk(lat, lng);
-// Incorporate weatherRisk.severity into riskScore when implemented.
 
 function haversineMeters(lat1, lng1, lat2, lng2) {
   const R = 6371000;
@@ -61,21 +59,26 @@ const RANK_LABELS  = ['SAFEST',  'BALANCED', 'RISKY'];
 const RANK_COLORS  = ['green',   'yellow',   'red'];
 const RANK_DISPLAY = ['Safest',  'Balanced', 'Risky'];
 
-// SafePulse Problem Gap #4: weather multiplier raises risk scores when conditions are adverse.
+// FUTURE_SCOPE: WEATHER RISK - fully implemented
+// Multipliers applied per-condition: storm=2.0x, fog=1.5x, rain=1.2x, clear=1.0x
 async function scoreRoutesWithWeather(routes, riskZones = [], centerLat = null, centerLng = null) {
-  let riskMultiplier = 1.0;
+  let weatherRiskFactor = 1.0;
+  let weatherCondition = 'Clear';
   if (centerLat !== null && centerLng !== null) {
     try {
       const weather = await trafficWeather.getWeatherRisk(centerLat, centerLng);
-      if (weather && weather.severity > 0) {
-        riskMultiplier = 1 + (weather.severity / 200); // max +50% at severity=100
+      if (weather) {
+        weatherRiskFactor = weather.weatherRiskFactor ?? 1.0;
+        weatherCondition = weather.condition ?? 'Clear';
       }
     } catch (_) {}
   }
 
   const scored = routes.map(route => ({
     ...route,
-    riskScore: Math.min(100, Math.round(routeRiskScore(route.polyline, riskZones) * riskMultiplier)),
+    riskScore: Math.min(100, Math.round(routeRiskScore(route.polyline, riskZones) * weatherRiskFactor)),
+    weatherRiskFactor,
+    weatherCondition,
   }));
 
   scored.sort((a, b) => a.riskScore - b.riskScore);
@@ -86,6 +89,21 @@ async function scoreRoutesWithWeather(routes, riskZones = [], centerLat = null, 
     type:       RANK_LABELS[index],
     color:      RANK_COLORS[index],
     label:      RANK_DISPLAY[index],
+  }));
+}
+
+/**
+ * Converts community hazard reports into transient risk zones for scoring.
+ * Each report contributes a 200m-radius zone weighted by its severity field.
+ * @param {Array<{latitude, longitude, severity}>} reports
+ * @returns {Array<{lat, lng, radiusM, severity}>}
+ */
+function communityReportsToRiskZones(reports = []) {
+  return reports.map(r => ({
+    lat:     r.latitude,
+    lng:     r.longitude,
+    radiusM: 200,
+    severity: r.severity ?? 50,
   }));
 }
 
@@ -114,4 +132,5 @@ module.exports = {
   routeRiskScore,
   scoreRoutes,
   scoreRoutesWithWeather,
+  communityReportsToRiskZones,
 };

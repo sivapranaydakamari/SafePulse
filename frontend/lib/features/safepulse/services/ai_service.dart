@@ -1,4 +1,5 @@
 // SafePulse Problem Gap #2: on-device TFLite crash detection from a 250-sample sensor window.
+// FUTURE_SCOPE: AI MODEL MONITORING - fully implemented
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
@@ -134,8 +135,18 @@ class AIService {
       var input = [windowToAnalyze];
       final output = _buildOutputBuffer();
 
+      final inferenceStart = DateTime.now();
       _interpreter!.run(input, output);
+      final inferenceMs = DateTime.now().difference(inferenceStart).inMicroseconds / 1000.0;
       final crashProbability = _extractProbability(output);
+
+      // Post prediction telemetry for drift monitoring (fire-and-forget)
+      unawaited(ApiService.logPrediction(
+        crashDetected: crashProbability > 0.25,
+        confidence:    crashProbability,
+        inferenceMs:   inferenceMs,
+        gForce:        maxGForce,
+      ));
 
       if (crashProbability > 0.25) {
         debugPrint("AIService: AI CONFIRMED CRASH ($crashProbability)");

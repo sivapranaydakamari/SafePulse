@@ -3,6 +3,7 @@ const router = express.Router();
 const axios = require('axios');
 const routeScoring = require('../services/route_scoring');
 const riskIncidentRepository = require('../services/risk_incident_repository');
+const CommunityReport = require('../models/CommunityReport');
 const { requireAuth } = require('../middleware/auth');
 
 function isValidCoordinatePair(point) {
@@ -31,10 +32,33 @@ router.post('/suggest', requireAuth, async (req, res) => {
     const riskZones = await riskIncidentRepository.getRiskZonesForRoutes(routes);
     const centerLat = (start.lat + destination.lat) / 2;
     const centerLng = (start.lng + destination.lng) / 2;
-    const scoredRoutes = await routeScoring.scoreRoutesWithWeather(routes, riskZones, centerLat, centerLng);
+
+    // Merge community reports (within 10 km of route midpoint) into risk zones
+    let communityZones = [];
+    try {
+      const communityReports = await CommunityReport.find({
+        locationPoint: {
+          $near: {
+            $geometry: { type: 'Point', coordinates: [centerLng, centerLat] },
+            $maxDistance: 10000,
+          },
+        },
+        resolved: false,
+      }).lean();
+      communityZones = routeScoring.communityReportsToRiskZones(communityReports);
+    } catch (_) {}
+
+    const scoredRoutes = await routeScoring.scoreRoutesWithWeather(
+      routes,
+      [...riskZones, ...communityZones],
+      centerLat,
+      centerLng,
+    );
 
     // Fix 7: flag when MongoDB CrimeZone collection is empty (all scores == 0)
     const riskDataAvailable = scoredRoutes.some(r => r.riskScore > 0);
+    const weatherRiskFactor = scoredRoutes[0]?.weatherRiskFactor ?? 1.0;
+    const weatherCondition  = scoredRoutes[0]?.weatherCondition  ?? 'Clear';
 
     const response = {
       success: true,
@@ -43,6 +67,8 @@ router.post('/suggest', requireAuth, async (req, res) => {
       routeCount: scoredRoutes.length,
       riskZoneCount: riskZones.length,
       riskDataAvailable,
+      weatherRiskFactor,
+      weatherCondition,
       routes: scoredRoutes.map((route, index) => formatRoute(route, index, riskZones.length)),
     };
 

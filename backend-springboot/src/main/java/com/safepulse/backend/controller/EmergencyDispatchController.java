@@ -1,0 +1,52 @@
+package com.safepulse.backend.controller;
+
+// FUTURE_SCOPE: GOVERNMENT DISPATCH - fully implemented
+/**
+ * Exposes the emergency dispatch workflow via REST.
+ *
+ * <p>{@code POST /api/emergency/dispatch} is called <em>server-to-server</em> from the
+ * Node.js SOS handler whenever {@code severity > 0.8}. The endpoint delegates to
+ * {@link com.safepulse.backend.service.EmergencyDispatchService#dispatchEmergency},
+ * which orders events by priority score and invokes the {@link com.safepulse.backend.service.GovApiAdapter}
+ * with up to 3 retries.
+ */
+
+import com.safepulse.backend.dto.EmergencyEventResponse;
+import com.safepulse.backend.model.EmergencyEvent;
+import com.safepulse.backend.service.EmergencyDispatchService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/emergency")
+public class EmergencyDispatchController {
+
+    private final EmergencyDispatchService dispatchService;
+
+    public EmergencyDispatchController(EmergencyDispatchService dispatchService) {
+        this.dispatchService = dispatchService;
+    }
+
+    /**
+     * Triggers government dispatch for a high-severity SOS event.
+     *
+     * <p>Called by Node.js {@code routes/sos.js} when {@code severity > 0.8}.
+     * Never called directly by the Flutter mobile app.
+     *
+     * @param body map containing {@code sosEventId}, {@code latitude}, {@code longitude},
+     *             and {@code severity} (0–100 integer).
+     * @return 201 Created with the persisted dispatch record.
+     */
+    @PostMapping("/dispatch")
+    public ResponseEntity<EmergencyEventResponse> dispatch(@RequestBody Map<String, Object> body) {
+        String sosEventId = (String) body.get("sosEventId");
+        double latitude   = ((Number) body.get("latitude")).doubleValue();
+        double longitude  = ((Number) body.get("longitude")).doubleValue();
+        int    severity   = ((Number) body.get("severity")).intValue();
+
+        EmergencyEvent event = dispatchService.dispatchEmergency(sosEventId, latitude, longitude, severity);
+        return ResponseEntity.status(201).body(EmergencyEventResponse.from(event));
+    }
+}

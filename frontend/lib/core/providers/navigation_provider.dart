@@ -13,12 +13,17 @@ class NavigationProvider extends ChangeNotifier {
   List<RouteSuggestion> _routes = [];
   bool _isLoading = false;
   bool _riskDataAvailable = true;
+  double _weatherRiskFactor = 1.0;
+  String _weatherCondition = 'Clear';
   String? _error;
 
   List<GeocodeResult> get suggestions => _suggestions;
   List<RouteSuggestion> get routes => _routes;
   bool get isLoading => _isLoading;
   bool get riskDataAvailable => _riskDataAvailable;
+  // FUTURE_SCOPE: WEATHER RISK - fully implemented
+  double get weatherRiskFactor => _weatherRiskFactor;
+  String get weatherCondition => _weatherCondition;
   String? get error => _error;
 
   Future<void> searchDestination(String query) async {
@@ -62,6 +67,8 @@ class NavigationProvider extends ChangeNotifier {
       );
       _routes = result.routes;
       _riskDataAvailable = result.riskDataAvailable;
+      _weatherRiskFactor = result.weatherRiskFactor;
+      _weatherCondition  = result.weatherCondition;
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -79,6 +86,8 @@ class NavigationProvider extends ChangeNotifier {
     _suggestions = [];
     _routes = [];
     _riskDataAvailable = true;
+    _weatherRiskFactor = 1.0;
+    _weatherCondition  = 'Clear';
     _error = null;
     _isLoading = false;
     notifyListeners();

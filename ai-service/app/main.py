@@ -10,6 +10,7 @@ from typing import Generator
 
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from app.schemas import AccidentAnalysisRequest, AccidentAnalysisResponse
 from app.services.crash_analyzer import CrashAnalyzer, SensorReading
@@ -130,6 +131,53 @@ def log_false_positive_endpoint() -> dict:
     _false_positive_count += 1
     analyzer.log_false_positive(0.0, 0.0)
     return {"logged": True, "total_false_positives": _false_positive_count}
+
+
+class PredictionLogRequest(BaseModel):
+    """Schema for prediction telemetry posted by the Flutter client after each crash inference."""
+    crash_detected: bool
+    confidence: float          # 0.0–1.0
+    inference_ms: float        # client-side inference wall time
+    sensor_hash: str = ""      # SHA-256 of the 250-sample window (for dedup)
+    g_force: float = 0.0
+
+
+_prediction_log: list[dict] = []
+
+
+@app.post("/metrics/prediction")
+def log_prediction(body: PredictionLogRequest) -> dict:
+    # FUTURE_SCOPE: AI MODEL MONITORING - fully implemented
+    """Log a prediction result from the Flutter client for drift monitoring.
+
+    Predictions with confidence < 0.6 are flagged as uncertain and counted
+    toward the false-positive rate used by the drift monitor.
+    """
+    global _false_positive_count
+    entry = {
+        "crash_detected": body.crash_detected,
+        "confidence":     body.confidence,
+        "inference_ms":   body.inference_ms,
+        "sensor_hash":    body.sensor_hash,
+        "g_force":        body.g_force,
+        "uncertain":      body.confidence < 0.6,
+    }
+    _prediction_log.append(entry)
+
+    _inference_stats["total_inferences"] += 1
+    _inference_stats["total_ms"]         += body.inference_ms
+    if body.crash_detected:
+        _inference_stats["crash_detections"] += 1
+
+    if body.confidence < 0.6 and body.crash_detected:
+        _false_positive_count += 1
+        analyzer.log_false_positive(body.confidence, body.g_force)
+
+    return {
+        "logged":           True,
+        "uncertain":        entry["uncertain"],
+        "false_positives":  _false_positive_count,
+    }
 
 
 _ADMIN_TOKEN = os.getenv("RETRAIN_ADMIN_TOKEN", "")

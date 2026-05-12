@@ -101,7 +101,7 @@ class UserRepository {
     return results.map((r) => GeocodeResult.fromJson(r)).toList();
   }
 
-  Future<({List<RouteSuggestion> routes, bool riskDataAvailable})> getRouteSuggestions({
+  Future<({List<RouteSuggestion> routes, bool riskDataAvailable, double weatherRiskFactor, String weatherCondition})> getRouteSuggestions({
     required double startLat,
     required double startLng,
     required double destLat,
@@ -117,9 +117,14 @@ class UserRepository {
       final routes = (results['routes'] as List)
           .map((r) => RouteSuggestion.fromJson(r))
           .toList();
-      return (routes: routes, riskDataAvailable: results['riskDataAvailable'] != false);
+      return (
+        routes: routes,
+        riskDataAvailable: results['riskDataAvailable'] != false,
+        weatherRiskFactor: (results['weatherRiskFactor'] as num?)?.toDouble() ?? 1.0,
+        weatherCondition: (results['weatherCondition'] as String?) ?? 'Clear',
+      );
     }
-    return (routes: <RouteSuggestion>[], riskDataAvailable: true);
+    return (routes: <RouteSuggestion>[], riskDataAvailable: true, weatherRiskFactor: 1.0, weatherCondition: 'Clear');
   }
 
   Future<Map<String, String>> authHeaders() {

@@ -1,9 +1,27 @@
 const express = require('express');
 const router  = express.Router();
+const axios   = require('axios');
 const User    = require('../models/User');
 const SOS     = require('../models/SOS');
 const notificationService = require('../services/notification_service');
 const { requireAuth } = require('../middleware/auth');
+
+const SPRINGBOOT_URL = process.env.SPRINGBOOT_URL || 'http://localhost:8080';
+
+// FUTURE_SCOPE: GOVERNMENT DISPATCH - fully implemented
+// Calls Spring Boot /api/emergency/dispatch when SOS severity > 0.8 (normalised 0–1)
+async function _notifyGovDispatch(sosId, lat, lng, severityNorm) {
+  if (severityNorm <= 0.8) return;
+  try {
+    await axios.post(
+      `${SPRINGBOOT_URL}/api/emergency/dispatch`,
+      { sosEventId: sosId.toString(), latitude: lat, longitude: lng, severity: Math.round(severityNorm * 100) },
+      { timeout: 10_000 },
+    );
+  } catch (err) {
+    console.error('[SOS] GovDispatch notify failed:', err.message);
+  }
+}
 
 // POST /api/sos/start  (protected)
 router.post('/start', requireAuth, async (req, res) => {
@@ -91,6 +109,10 @@ router.post('/start', requireAuth, async (req, res) => {
         },
       });
     }
+
+    // Trigger government dispatch for high-severity SOS (severity 1.0 = 100%)
+    const severityNorm = req.body.severity ?? 1.0;
+    _notifyGovDispatch(sos._id, lat, lng, severityNorm).catch(() => {});
 
     res.status(201).json({
       success: true,

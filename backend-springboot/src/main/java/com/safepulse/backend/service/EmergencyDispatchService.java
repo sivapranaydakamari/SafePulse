@@ -1,23 +1,37 @@
 package com.safepulse.backend.service;
 
-import com.safepulse.backend.model.EmergencyEvent;
-import com.safepulse.backend.repository.EmergencyEventRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
+// FUTURE_SCOPE: GOVERNMENT DISPATCH - fully implemented
 /**
  * Handles autonomous emergency dispatch for SafePulse Problem Gap #3.
  *
- * <p>When the on-device SOS triggers without user interaction (injured/unconscious rider),
- * this service creates a persistent dispatch record in MongoDB so that government or
- * third-party emergency APIs can later poll and acknowledge the event. Dispatch
- * recommendations are set based on the computed severity score.
+ * <p>Events are ordered by priority score before processing so that the highest-severity
+ * incidents reach the government API adapter first. The {@link GovApiAdapter} retries
+ * up to three times (5 s between attempts) before giving up.
+ *
+ * <p>Dispatch is recommended for scores ≥ 50 and mandatory for scores ≥ 75.
  */
+
+import com.safepulse.backend.model.EmergencyEvent;
+import com.safepulse.backend.repository.EmergencyEventRepository;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.PriorityQueue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 @Service
 public class EmergencyDispatchService {
 
+    private static final Logger log = LoggerFactory.getLogger(EmergencyDispatchService.class);
+
     @Autowired
     private EmergencyEventRepository repository;
+
+    @Autowired
+    private GovApiAdapter govApiAdapter;
 
     /**
      * Creates an emergency dispatch record for an autonomous SOS event.
@@ -45,6 +59,40 @@ public class EmergencyDispatchService {
         event.setDispatchRecommended(severity >= 50);
         event.setStatus("DISPATCHED");
         event.setLocationStatus("CONFIRMED");
-        return repository.save(event);
+
+        EmergencyEvent saved = repository.save(event);
+
+        // Notify government API asynchronously for high-priority events (severity >= 50)
+        if (severity >= 50) {
+            boolean acked = govApiAdapter.notify(sosEventId, latitude, longitude, severity);
+            log.info("[Dispatch] GovApi notification {} for eventId={}", acked ? "succeeded" : "failed", sosEventId);
+        }
+
+        return saved;
+    }
+
+    /**
+     * Processes a batch of pending events ordered by priority (highest first).
+     *
+     * @param pendingEvents unordered list of events awaiting dispatch
+     * @return events in priority-descending order after dispatch attempts
+     */
+    public List<EmergencyEvent> dispatchBatch(List<EmergencyEvent> pendingEvents) {
+        PriorityQueue<EmergencyEvent> queue = new PriorityQueue<>(
+            Comparator.comparingInt(EmergencyEvent::getPriorityScore).reversed()
+        );
+        queue.addAll(pendingEvents);
+
+        List<EmergencyEvent> processed = new ArrayList<>();
+        while (!queue.isEmpty()) {
+            EmergencyEvent e = queue.poll();
+            processed.add(dispatchEmergency(
+                e.getEventId(),
+                e.getLatitude(),
+                e.getLongitude(),
+                e.getPriorityScore()
+            ));
+        }
+        return processed;
     }
 }

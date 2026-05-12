@@ -79,7 +79,8 @@ app.use('/api/overpass', require('./routes/overpass'));
 app.use('/api/support', require('./routes/support'));
 app.use('/api/crime', require('./routes/crime_routes'));
 app.use('/api/risk-zones', require('./routes/risk_zones'));
-app.use('/api/ai',       require('./routes/ai'));
+app.use('/api/ai',        require('./routes/ai'));
+app.use('/api/community', require('./routes/community'));
 
 app.get('/', (req, res) => res.send('SafePulse API v2 running'));
 app.get('/health', (req, res) => {

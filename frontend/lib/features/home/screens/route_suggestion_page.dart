@@ -6,9 +6,11 @@ import 'package:animate_do/animate_do.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/services/location_service.dart';
+import '../../../core/services/community_report_service.dart';
 import '../../../core/providers/navigation_provider.dart';
 import '../../../core/models/geocode_result.dart';
 import '../../../core/models/route_suggestion.dart';
+import 'community_report_page.dart';
 import 'driving_mode_page.dart';
 import 'full_route_map_screen.dart';
 import '../widgets/route_safety_details.dart';
@@ -34,6 +36,9 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
   bool _isLocationLoading = true;
   int _selectedRouteIndex = 0;
   Timer? _debounce;
+
+  // FUTURE_SCOPE: COMMUNITY REPORTING - fully implemented
+  List<Map<String, dynamic>> _communityReports = [];
 
   @override
   void initState() {
@@ -209,18 +214,33 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
 
     if (!mounted) return;
     final routes = context.read<NavigationProvider>().routes;
-    
-    if (routes.isNotEmpty) {
-      setState(() {
-        _selectedRouteIndex = 0;
-      });
 
+    if (routes.isNotEmpty) {
+      setState(() => _selectedRouteIndex = 0);
       final bounds = LatLngBounds.fromPoints([_userPos, _destinationPos!]);
       _mapController.fitCamera(CameraFit.bounds(
-        bounds: bounds, 
-        padding: const EdgeInsets.fromLTRB(50, 150, 50, 300)
+        bounds: bounds,
+        padding: const EdgeInsets.fromLTRB(50, 150, 50, 300),
       ));
+      _loadCommunityReports();
     }
+  }
+
+  Future<void> _loadCommunityReports() async {
+    final midLat = (_userPos.latitude  + (_destinationPos?.latitude  ?? _userPos.latitude))  / 2;
+    final midLng = (_userPos.longitude + (_destinationPos?.longitude ?? _userPos.longitude)) / 2;
+    final reports = await CommunityReportService.instance.getNearbyReports(
+      latitude: midLat, longitude: midLng, radiusKm: 10,
+    );
+    if (mounted) setState(() => _communityReports = reports);
+  }
+
+  Future<void> _openReportPage() async {
+    final submitted = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const CommunityReportPage()),
+    );
+    if (submitted == true) _loadCommunityReports();
   }
 
   Color _colorFromString(String? c) {
@@ -239,6 +259,12 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: FloatingActionButton.small(
+        onPressed: _openReportPage,
+        backgroundColor: AppColors.primary,
+        tooltip: 'Report a hazard',
+        child: const Icon(Icons.add_alert, color: Colors.white),
+      ),
       body: Stack(
         children: [
           Positioned.fill(
@@ -265,7 +291,7 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
                           .toList();
                       return Polyline(
                         points: pts,
-                        color: selected ? _colorFromString(r.color) : _colorFromString(r.color).withOpacity(0.3),
+                        color: selected ? _colorFromString(r.color) : _colorFromString(r.color).withValues(alpha: 0.3),
                         strokeWidth: selected ? 8 : 4,
                       );
                     }).toList(),
@@ -282,6 +308,19 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
                       width: 40, height: 40,
                       child: const Icon(Icons.location_on, color: Colors.red, size: 36),
                     ),
+                  // FUTURE_SCOPE: COMMUNITY REPORTING - community hazard pins
+                  ..._communityReports.map((r) {
+                    final color = switch (r['hazardType'] as String? ?? '') {
+                      'accident'  => Colors.red,
+                      'roadblock' => Colors.purple,
+                      _           => Colors.orange,
+                    };
+                    return Marker(
+                      point: LatLng((r['latitude'] as num).toDouble(), (r['longitude'] as num).toDouble()),
+                      width: 32, height: 32,
+                      child: Icon(Icons.warning_amber, color: color, size: 26),
+                    );
+                  }),
                 ]),
               ],
             ),
@@ -367,9 +406,13 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
                         Container(
                           width: 40, height: 4,
                           margin: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2)),
+                          decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
                         ),
-                        _buildRouteList(navProvider.routes),
+                        _buildRouteList(
+                          navProvider.routes,
+                          weatherRiskFactor: navProvider.weatherRiskFactor,
+                          weatherCondition: navProvider.weatherCondition,
+                        ),
                       ],
                     ),
                   ),
@@ -405,7 +448,11 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
     );
   }
 
-  Widget _buildRouteList(List<RouteSuggestion> routes) {
+  Widget _buildRouteList(
+    List<RouteSuggestion> routes, {
+    double weatherRiskFactor = 1.0,
+    String weatherCondition = 'Clear',
+  }) {
     final riskDataAvailable = context.read<NavigationProvider>().riskDataAvailable;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -429,6 +476,31 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
                     child: Text(
                       'Safety scores are unavailable — crime data could not be loaded.',
                       style: TextStyle(color: Colors.amber, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          // FUTURE_SCOPE: WEATHER RISK - fully implemented
+          // Banner shown when weather multiplier > 1.5 (fog or storm conditions)
+          if (weatherRiskFactor > 1.5)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.15),
+                border: Border.all(color: Colors.blueAccent),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud, color: Colors.blueAccent, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Weather alert: $weatherCondition conditions detected — '
+                      'risk scores have been adjusted (×${weatherRiskFactor.toStringAsFixed(1)}).',
+                      style: const TextStyle(color: Colors.blueAccent, fontSize: 13),
                     ),
                   ),
                 ],
@@ -494,7 +566,7 @@ class _RouteSuggestionPageState extends State<RouteSuggestionPage> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: selected ? color.withOpacity(0.1) : AppColors.cardBg,
+        color: selected ? color.withValues(alpha: 0.1) : AppColors.cardBg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: selected ? color : Colors.white10, width: 2),
       ),
@@ -571,7 +643,7 @@ Widget _buildSafetyBadge(RouteSuggestion route) {
   return Container(
     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
     decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
       border: Border.all(color: color, width: 1.5),
       borderRadius: BorderRadius.circular(20),
     ),

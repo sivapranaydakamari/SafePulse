@@ -24,7 +24,14 @@ class TrafficWeatherService {
       if (wind > 50)         severity = Math.min(100, severity + 20);
       if (precipitation > 5) severity = Math.min(100, severity + 15);
 
-      return { condition, severity };
+      // FUTURE_SCOPE: WEATHER RISK - fully implemented
+      // Multipliers: storm=2.0x, fog=1.5x, rain=1.2x, clear=1.0x
+      let weatherRiskFactor = 1.0;
+      if (condition === 'Thunderstorm') weatherRiskFactor = 2.0;
+      else if (condition === 'Fog')     weatherRiskFactor = 1.5;
+      else if (['Rain', 'Shower', 'Drizzle'].includes(condition)) weatherRiskFactor = 1.2;
+
+      return { condition, severity, weatherRiskFactor };
     } catch (_) {
       return null;
     }

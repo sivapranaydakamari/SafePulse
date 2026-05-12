@@ -529,4 +529,31 @@ class ApiService {
       return false;
     }
   }
+
+  // FUTURE_SCOPE: AI MODEL MONITORING - fully implemented
+  /// Posts a crash-prediction result to the AI service for drift monitoring.
+  /// Fire-and-forget — failures are silently swallowed so they never block SOS.
+  static Future<void> logPrediction({
+    required bool crashDetected,
+    required double confidence,
+    required double inferenceMs,
+    double gForce = 0.0,
+    String sensorHash = '',
+  }) async {
+    try {
+      await http
+          .post(
+            Uri.parse('$baseUrl/api/ai/metrics/prediction'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'crash_detected': crashDetected,
+              'confidence':     confidence,
+              'inference_ms':   inferenceMs,
+              'g_force':        gForce,
+              'sensor_hash':    sensorHash,
+            }),
+          )
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {}
+  }
 }

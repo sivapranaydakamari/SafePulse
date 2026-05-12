@@ -1,5 +1,6 @@
 package com.safepulse.backend.service;
 
+// FUTURE_SCOPE: GOVERNMENT DISPATCH - fully implemented
 import com.safepulse.backend.model.EmergencyEvent;
 import com.safepulse.backend.repository.EmergencyEventRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -7,18 +8,28 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class EmergencyDispatchServiceTest {
 
     @Mock
     private EmergencyEventRepository repository;
+
+    @Spy
+    private GovApiAdapter govApiAdapter = new GovApiAdapter() {
+        @Override
+        protected boolean tryNotify(String id, double lat, double lon, int sev, int attempt) {
+            return true; // always succeed in tests
+        }
+    };
 
     @InjectMocks
     private EmergencyDispatchService service;
@@ -56,5 +67,24 @@ class EmergencyDispatchServiceTest {
 
         assertThat(result.getSeverity()).isEqualTo("HIGH");
         assertThat(result.isDispatchRecommended()).isTrue();
+    }
+
+    @Test
+    void dispatchBatch_ordersEventsByPriorityDescending() {
+        EmergencyEvent low = new EmergencyEvent();
+        low.setEventId("e-low"); low.setPriorityScore(20);
+
+        EmergencyEvent high = new EmergencyEvent();
+        high.setEventId("e-high"); high.setPriorityScore(90);
+
+        EmergencyEvent med = new EmergencyEvent();
+        med.setEventId("e-med"); med.setPriorityScore(55);
+
+        List<EmergencyEvent> results = service.dispatchBatch(List.of(low, high, med));
+
+        assertThat(results).hasSize(3);
+        // highest priority first
+        assertThat(results.get(0).getPriorityScore()).isGreaterThanOrEqualTo(results.get(1).getPriorityScore());
+        assertThat(results.get(1).getPriorityScore()).isGreaterThanOrEqualTo(results.get(2).getPriorityScore());
     }
 }
