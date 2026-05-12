@@ -32,7 +32,8 @@ class TrafficWeatherService {
       else if (['Rain', 'Shower', 'Drizzle'].includes(condition)) weatherRiskFactor = 1.2;
 
       return { condition, severity, weatherRiskFactor };
-    } catch (_) {
+    } catch (err) {
+      console.error('[WeatherService] getWeatherRisk failed:', err.message);
       return null;
     }
   }
@@ -58,7 +59,8 @@ class TrafficWeatherService {
       else if (precipitation > 1) severity = Math.min(100, severity + 5);
 
       return { severity, wind, precipitation };
-    } catch (_) {
+    } catch (err) {
+      console.error('[WeatherService] getTrafficRisk failed:', err.message);
       return null;
     }
   }

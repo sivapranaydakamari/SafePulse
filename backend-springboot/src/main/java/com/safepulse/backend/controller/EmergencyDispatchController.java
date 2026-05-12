@@ -38,15 +38,31 @@ public class EmergencyDispatchController {
      * @param body map containing {@code sosEventId}, {@code latitude}, {@code longitude},
      *             and {@code severity} (0–100 integer).
      * @return 201 Created with the persisted dispatch record.
+     * @throws IllegalArgumentException if required fields are missing or invalid.
      */
     @PostMapping("/dispatch")
     public ResponseEntity<EmergencyEventResponse> dispatch(@RequestBody Map<String, Object> body) {
-        String sosEventId = (String) body.get("sosEventId");
-        double latitude   = ((Number) body.get("latitude")).doubleValue();
-        double longitude  = ((Number) body.get("longitude")).doubleValue();
-        int    severity   = ((Number) body.get("severity")).intValue();
+        Object rawId  = body.get("sosEventId");
+        Object rawLat = body.get("latitude");
+        Object rawLng = body.get("longitude");
+        Object rawSev = body.get("severity");
+
+        if (!(rawId  instanceof String))  throw new IllegalArgumentException("sosEventId must be a non-null string");
+        if (!(rawLat instanceof Number))   throw new IllegalArgumentException("latitude must be a valid number");
+        if (!(rawLng instanceof Number))   throw new IllegalArgumentException("longitude must be a valid number");
+        if (!(rawSev instanceof Number))   throw new IllegalArgumentException("severity must be a valid number");
+
+        String sosEventId = (String) rawId;
+        double latitude   = ((Number) rawLat).doubleValue();
+        double longitude  = ((Number) rawLng).doubleValue();
+        int    severity   = ((Number) rawSev).intValue();
 
         EmergencyEvent event = dispatchService.dispatchEmergency(sosEventId, latitude, longitude, severity);
         return ResponseEntity.status(201).body(EmergencyEventResponse.from(event));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleBadRequest(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(ex.getMessage());
     }
 }

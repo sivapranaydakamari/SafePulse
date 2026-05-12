@@ -146,7 +146,9 @@ class AIService {
         confidence:    crashProbability,
         inferenceMs:   inferenceMs,
         gForce:        maxGForce,
-      ));
+      ).catchError((Object e) {
+        debugPrint('[AIService] logPrediction failed: $e');
+      }));
 
       if (crashProbability > 0.25) {
         debugPrint("AIService: AI CONFIRMED CRASH ($crashProbability)");

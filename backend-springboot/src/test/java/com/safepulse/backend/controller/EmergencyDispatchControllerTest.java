@@ -103,4 +103,19 @@ class EmergencyDispatchControllerTest {
 
         verify(dispatchService).dispatchEmergency("sos-888", 28.613, 77.209, 85);
     }
+
+    @Test
+    void dispatch_missingField_returns400() throws Exception {
+        // sosEventId is absent — controller must return 400, not 500
+        Map<String, Object> body = Map.of(
+            "latitude",  17.385,
+            "longitude", 78.487,
+            "severity",  90
+        );
+
+        mockMvc.perform(post("/api/emergency/dispatch")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+            .andExpect(status().isBadRequest());
+    }
 }

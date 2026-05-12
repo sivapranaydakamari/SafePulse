@@ -46,7 +46,9 @@ router.post('/suggest', requireAuth, async (req, res) => {
         resolved: false,
       }).lean();
       communityZones = routeScoring.communityReportsToRiskZones(communityReports);
-    } catch (_) {}
+    } catch (err) {
+      console.error('[Routes] CommunityReport geo-query failed (check 2dsphere index):', err.message);
+    }
 
     const scoredRoutes = await routeScoring.scoreRoutesWithWeather(
       routes,

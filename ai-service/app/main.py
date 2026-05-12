@@ -193,7 +193,8 @@ def _stream_retrain_output(script_path: str) -> Generator[str, None, None]:
         text=True,
         bufsize=1,
     )
-    assert proc.stdout is not None
+    if proc.stdout is None:
+        raise RuntimeError("retrain subprocess stdout pipe is None — cannot stream output")
     for line in proc.stdout:
         line = line.rstrip("\n")
         if line:
