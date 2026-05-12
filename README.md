@@ -98,7 +98,7 @@ Emergency Svc  AI Accident Service    (tracking:update /      │
 |---|---|
 | Mobile Frontend | Flutter, Dart, Provider, TFLite Flutter, sensors\_plus, flutter\_map |
 | API Gateway | Node.js, Express, Mongoose, Helmet, Morgan, JWT, WebSocket (ws) |
-| Emergency Microservice | Java 17, Spring Boot 3, Spring Data JPA, H2 (dev) / MySQL (prod), Lombok |
+| Emergency Microservice | Java 17, Spring Boot 3, Spring Data MongoDB, Lombok |
 | AI Analysis Service | Python 3.11, FastAPI, TensorFlow Lite / tflite\_runtime, NumPy |
 | Database | MongoDB (geospatial 2dsphere indexes) |
 | Notifications | Firebase Cloud Messaging (FCM), Twilio SMS, Nodemailer |
@@ -236,7 +236,7 @@ cd backend-springboot
 .\mvnw.cmd spring-boot:run
 ```
 
-The service starts on port `8080` using H2 in-memory database by default.
+The service starts on port `8080` using MongoDB (`safepulse_dev` database by default in dev profile).
 
 ---
 
@@ -386,7 +386,7 @@ All future scope items below have code scaffolding already in place — each lin
 - Node.js uses **Helmet** (security headers) and **express-rate-limit** (global + stricter auth limits).
 - Use **PM2 cluster mode** (`ecosystem.config.js`) for zero-downtime multi-core deployment.
 - Use a managed **MongoDB Atlas** deployment with geospatial indexes enabled.
-- Run the Spring Boot service with **MySQL or PostgreSQL** in production (H2 is for development only).
+- Run the Spring Boot service with `MONGO_URI` set and `--spring.profiles.active=prod` in production.
 - Host the Python AI service separately and configure `AI_SERVICE_URL` in the Node backend.
 - Configure `SPRING_EMERGENCY_SERVICE_URL` to point to the deployed Spring Boot instance.
 - Replace public OSRM API calls with a **self-hosted or paid routing provider** before production traffic.

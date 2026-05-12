@@ -77,11 +77,11 @@ class _CircleMapPageState extends State<CircleMapPage> {
         if (!mounted) return;
         for (final doc in snapshot.docs) {
           final data = doc.data();
-          final uid = (data['userId'] as String?) ?? doc.id;
+          final mongoId = data['mongoId'] as String?;
           final lat = (data['lat'] as num?)?.toDouble();
           final lng = (data['lng'] as num?)?.toDouble();
-          if (uid.isNotEmpty && lat != null && lng != null) {
-            _updateMemberPosition(uid, lat, lng);
+          if (mongoId != null && mongoId.isNotEmpty && lat != null && lng != null) {
+            _updateMemberPosition(mongoId, lat, lng);
           }
         }
       },
@@ -138,9 +138,11 @@ class _CircleMapPageState extends State<CircleMapPage> {
   }
 
   /// Merges a Firestore position update into the existing _members list in-place.
-  /// Only updates a member whose userId matches; silently ignores unknown UIDs.
-  void _updateMemberPosition(String uid, double lat, double lng) {
-    final idx = _members.indexWhere((m) => m['userId'] == uid || m['_id'] == uid);
+  /// Matches exclusively on mongoId to avoid Firebase-UID / MongoDB-ID confusion.
+  void _updateMemberPosition(String mongoId, double lat, double lng) {
+    final idx = _members.indexWhere(
+      (m) => m['_id'] == mongoId || m['userId'] == mongoId,
+    );
     if (idx == -1) return;
     final updated = Map<String, dynamic>.from(_members[idx]);
     updated['lastLocation'] = {'lat': lat, 'lng': lng};

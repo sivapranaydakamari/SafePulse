@@ -23,4 +23,19 @@ describe('Route Scoring Service', () => {
     expect(scored[0].id).toBe('r2');
     expect(scored[1].id).toBe('r1');
   });
+
+  it('scoreRoutes returns up to 3 routes with distinct riskLabels', () => {
+    const zones = [{ lat: 10, lng: 10, radiusM: 1000, severity: 90 }];
+    const routes = [
+      { id: 'r1', duration: 100, distance: 1000, polyline: [[10, 10]] },
+      { id: 'r2', duration: 120, distance: 1200, polyline: [[11, 11]] },
+      { id: 'r3', duration: 140, distance: 1400, polyline: [[12, 12]] },
+    ];
+
+    const result = routeScoring.scoreRoutes(routes, zones);
+    const labels = result.map(r => r.riskLabel);
+
+    expect(result.length).toBe(3);
+    expect(new Set(labels).size).toBe(3);
+  });
 });

@@ -2,7 +2,6 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
-// TFLite inference engine — crash detection model (assets/crash_model.tflite)
 import 'package:tflite_flutter/tflite_flutter.dart';
 import '../../../core/services/api_service.dart';
 
@@ -125,6 +124,7 @@ class AIService {
 
       if (crashProbability > 0.25) {
         debugPrint("AIService: AI CONFIRMED CRASH ($crashProbability)");
+        _recentSpikes.clear();
         onCrashDetected?.call(crashProbability);
       } else {
         debugPrint("AIService: AI FILTERED FALSE ALARM ($crashProbability)");
@@ -133,8 +133,9 @@ class AIService {
     } catch (e) {
       debugPrint("AIService: AI ERROR EXCEPTION: $e");
       onLog?.call("❌ AI Error: $e. Falling back to basic threshold.");
-      if (maxGForce > 3.5) { // Lowered to 3.5 for manual testing
+      if (maxGForce > 3.5) {
         debugPrint("AIService: FALLBACK THRESHOLD MET! Triggering SOS.");
+        _recentSpikes.clear();
         onCrashDetected?.call(1.0);
       } else {
         debugPrint("AIService: FALLBACK THRESHOLD NOT MET. ($maxGForce <= 3.5)");

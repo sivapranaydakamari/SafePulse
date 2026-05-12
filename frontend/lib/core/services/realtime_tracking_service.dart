@@ -16,6 +16,7 @@ class RealtimeTrackingService {
   final _events = StreamController<Map<String, dynamic>>.broadcast();
   bool _disposed = false;
   String? _userId;
+  String? _mongoUserId;
 
   Stream<Map<String, dynamic>> get events => _events.stream;
 
@@ -27,9 +28,10 @@ class RealtimeTrackingService {
       return TrackingStatus.failedNoToken;
     }
 
-    // Cache userId for Firestore location mirroring.
+    // Cache both IDs for Firestore location mirroring.
     final prefs = await SharedPreferences.getInstance();
     _userId = prefs.getString('userId');
+    _mongoUserId = prefs.getString('mongoUserId') ?? prefs.getString('_id');
 
     try {
       final uri = Uri.parse(AppConfig.realtimeUrl)
@@ -100,9 +102,10 @@ class RealtimeTrackingService {
           'lng': lng,
           'ts': FieldValue.serverTimestamp(),
           'userId': uid,
+          'mongoId': _mongoUserId ?? '',
         }, SetOptions(merge: true))
         .catchError((e) {
-          debugPrint('[Tracking] Firestore mirror failed: $e');
+          debugPrint('[Firestore] Location sync failed: $e');
         });
   }
 

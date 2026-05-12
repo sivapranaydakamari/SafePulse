@@ -1,11 +1,13 @@
 // lib/features/safepulse/services/sos_service.dart
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:telephony/telephony.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/repositories/sos_repository.dart';
+import '../../../core/services/local_queue_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SosService {
@@ -70,8 +72,6 @@ class SosService {
     );
   }
 
-  // TODO (future scope): replace direct SMS with LocalQueueService.enqueueSOSEvent()
-  // for reliable offline delivery with persistence and retry. See local_queue_service.dart.
   Future<void> triggerOfflineSOS(
     double lat,
     double lng, {
@@ -140,12 +140,21 @@ class SosService {
   }
 
   Future<void> _executeEmergencySOSLocal(List<String> contacts, String payload) async {
+    // Escalate to foreground so Android 14+ permits the SMS send (Bug 3)
+    FlutterBackgroundService().invoke('setAsForeground');
+
     for (String number in contacts) {
       try {
-        await telephony.sendSms(to: number, message: payload);
+        await telephony.sendSms(to: number, message: payload, isMultipart: true);
         debugPrint("[SosService Background] SMS sent to $number");
       } catch (e) {
-        debugPrint("[SosService Background] SMS Failed to $number: $e");
+        await LocalQueueService.instance.enqueue({
+          'type': 'sms',
+          'to': number,
+          'message': payload,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+        debugPrint('[SosService Background] SMS queued for retry: $number — $e');
       }
       await Future.delayed(const Duration(milliseconds: 500));
     }

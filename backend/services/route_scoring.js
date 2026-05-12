@@ -55,23 +55,27 @@ function riskLabel(score) {
   return { type: 'RISKY', color: 'red', label: 'Risky' };
 }
 
+// Rank-index labels guarantee uniqueness regardless of clustered scores.
+const RANK_LABELS  = ['SAFEST',  'BALANCED', 'RISKY'];
+const RANK_COLORS  = ['green',   'yellow',   'red'];
+const RANK_DISPLAY = ['Safest',  'Balanced', 'Risky'];
+
 // Only real OSRM routes are returned; no synthetic variants are fabricated.
 function scoreRoutes(routes, riskZones = []) {
-  const scored = routes.map(route => {
-    const score = routeRiskScore(route.polyline, riskZones);
-    const { type, color, label } = riskLabel(score);
-    return {
-      ...route,
-      riskScore: score,
-      type,
-      color,
-      label,
-    };
-  });
+  const scored = routes.map(route => ({
+    ...route,
+    riskScore: routeRiskScore(route.polyline, riskZones),
+  }));
 
   scored.sort((a, b) => a.riskScore - b.riskScore);
 
-  return scored.slice(0, 3);
+  return scored.slice(0, 3).map((route, index) => ({
+    ...route,
+    riskLabel: RANK_LABELS[index],
+    type:       RANK_LABELS[index],
+    color:      RANK_COLORS[index],
+    label:      RANK_DISPLAY[index],
+  }));
 }
 
 module.exports = {
