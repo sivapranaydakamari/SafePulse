@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -36,6 +37,7 @@ class _CircleMapPageState extends State<CircleMapPage> {
   List<Map<String, dynamic>> _members = [];
   Timer? _locationTimer;
   Timer? _fetchMembersTimer;
+  StreamSubscription<QuerySnapshot>? _firestoreSubscription;
   int _selectedMemberIndex = -1;
 
   late CircleRepository _circleRepo;
@@ -62,6 +64,27 @@ class _CircleMapPageState extends State<CircleMapPage> {
     });
     _fetchMembersTimer =
         Timer.periodic(const Duration(seconds: 15), (_) => _fetchMembers());
+
+    // Firestore supplementary real-time channel — merges position updates into
+    // the existing _members list without replacing the REST polling path.
+    _firestoreSubscription = FirebaseFirestore.instance
+        .collection('live_locations')
+        .snapshots()
+        .listen(
+      (snapshot) {
+        if (!mounted) return;
+        for (final doc in snapshot.docs) {
+          final data = doc.data();
+          final uid = (data['userId'] as String?) ?? doc.id;
+          final lat = (data['lat'] as num?)?.toDouble();
+          final lng = (data['lng'] as num?)?.toDouble();
+          if (uid.isNotEmpty && lat != null && lng != null) {
+            _updateMemberPosition(uid, lat, lng);
+          }
+        }
+      },
+      onError: (e) => debugPrint('[CircleMap] Firestore listener error: $e'),
+    );
   }
 
   Future<void> _getUserLocation() async {
@@ -112,10 +135,23 @@ class _CircleMapPageState extends State<CircleMapPage> {
     }
   }
 
+  /// Merges a Firestore position update into the existing _members list in-place.
+  /// Only updates a member whose userId matches; silently ignores unknown UIDs.
+  void _updateMemberPosition(String uid, double lat, double lng) {
+    final idx = _members.indexWhere((m) => m['userId'] == uid || m['_id'] == uid);
+    if (idx == -1) return;
+    final updated = Map<String, dynamic>.from(_members[idx]);
+    updated['lastLocation'] = {'lat': lat, 'lng': lng};
+    if (mounted) {
+      setState(() => _members[idx] = updated);
+    }
+  }
+
   @override
   void dispose() {
     _locationTimer?.cancel();
     _fetchMembersTimer?.cancel();
+    _firestoreSubscription?.cancel();
     super.dispose();
   }
 

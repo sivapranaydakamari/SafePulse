@@ -1,7 +1,9 @@
 /**
- * TrafficWeatherService — Future Scope
- * Planned: Live traffic and weather integration for enhanced route risk scoring.
- * TODO: Integrate OpenWeatherMap API (weather) and HERE Traffic Flow API (congestion).
+ * FUTURE SCOPE: Live Traffic & Weather Route Overlay
+ * Planned: integrate TomTom Traffic API and OpenWeatherMap for real-time
+ * route risk adjustment. Stub returns static placeholder data.
+ * Extension point: replace TODO blocks with live API calls.
+ * Tracked in: GitHub Issues label "future-traffic-weather"
  */
 class TrafficWeatherService {
   /**

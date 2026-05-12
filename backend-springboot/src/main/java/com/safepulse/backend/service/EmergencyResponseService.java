@@ -8,7 +8,6 @@ import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EmergencyResponseService {
@@ -19,7 +18,6 @@ public class EmergencyResponseService {
         this.repository = repository;
     }
 
-    @Transactional
     public EmergencyEvent createEvent(SosRequest request) {
         validateCoordinates(request.getLatitude(), request.getLongitude());
 
@@ -36,18 +34,15 @@ public class EmergencyResponseService {
         return repository.save(event);
     }
 
-    @Transactional(readOnly = true)
     public EmergencyEvent getEvent(String eventId) {
         return repository.findByEventId(eventId)
                 .orElseThrow(() -> new NoSuchElementException("Emergency event not found"));
     }
 
-    @Transactional(readOnly = true)
     public List<EmergencyEvent> getActiveEvents() {
         return repository.findByStatusOrderByCreatedAtDesc("ACTIVE");
     }
 
-    @Transactional
     public EmergencyEvent resolveEvent(String eventId) {
         EmergencyEvent event = getEvent(eventId);
         event.setStatus("RESOLVED");

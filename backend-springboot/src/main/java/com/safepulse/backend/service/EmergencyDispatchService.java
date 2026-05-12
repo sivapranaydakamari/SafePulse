@@ -1,15 +1,11 @@
 package com.safepulse.backend.service;
 
 /**
- * EmergencyDispatchService — Future Scope
- *
- * Planned integration with government emergency dispatch APIs (police/ambulance/112).
- * TODO: Obtain regulatory API access and implement eCall / national PSAP integration.
- *
- * When implemented:
- * - Receives SOS events from SosController above a severity threshold
- * - Formats and transmits a standardized emergency notification (location, profile, severity)
- * - Handles acknowledgement and logs dispatch attempts for audit
+ * FUTURE SCOPE: Emergency Dispatch Integration
+ * Planned: Connect to police/ambulance CAD systems via REST webhooks.
+ * Extension point: implement dispatch(EmergencyEvent) to POST to gov APIs.
+ * Current state: stub — logs dispatch intent, no external call made.
+ * Tracked in: GitHub Issues label "future-dispatch"
  */
 public class EmergencyDispatchService {
 

@@ -2,6 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../config/app_config.dart';
 import 'api_service.dart';
 
@@ -11,6 +15,7 @@ class RealtimeTrackingService {
   WebSocket? _socket;
   final _events = StreamController<Map<String, dynamic>>.broadcast();
   bool _disposed = false;
+  String? _userId;
 
   Stream<Map<String, dynamic>> get events => _events.stream;
 
@@ -21,6 +26,10 @@ class RealtimeTrackingService {
     if (token == null || token.isEmpty) {
       return TrackingStatus.failedNoToken;
     }
+
+    // Cache userId for Firestore location mirroring.
+    final prefs = await SharedPreferences.getInstance();
+    _userId = prefs.getString('userId');
 
     try {
       final uri = Uri.parse(AppConfig.realtimeUrl)
@@ -58,6 +67,12 @@ class RealtimeTrackingService {
       if (lat != null && lng != null) 'location': {'lat': lat, 'lng': lng},
       'circleMemberIds': circleMemberIds,
     });
+
+    // Mirror to Firestore as a supplementary real-time channel.
+    // Failures are silently swallowed so the primary WebSocket path is never blocked.
+    if (lat != null && lng != null) {
+      _mirrorLocationToFirestore(lat, lng);
+    }
   }
 
   void sendSosStarted({
@@ -72,6 +87,23 @@ class RealtimeTrackingService {
       'location': {'lat': lat, 'lng': lng},
       'circleMemberIds': circleMemberIds,
     });
+  }
+
+  void _mirrorLocationToFirestore(double lat, double lng) {
+    final uid = _userId;
+    if (uid == null || uid.isEmpty) return;
+    FirebaseFirestore.instance
+        .collection('live_locations')
+        .doc(uid)
+        .set({
+          'lat': lat,
+          'lng': lng,
+          'ts': FieldValue.serverTimestamp(),
+          'userId': uid,
+        }, SetOptions(merge: true))
+        .catchError((e) {
+          debugPrint('[Tracking] Firestore mirror failed: $e');
+        });
   }
 
   void _send(Map<String, dynamic> message) {

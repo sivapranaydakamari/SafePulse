@@ -1,10 +1,8 @@
-/// OBD-II Vehicle Integration — Future Scope
-///
-/// Planned: Direct vehicle speed and diagnostics via Bluetooth OBD-II adapter.
-/// TODO: Integrate flutter_blue_plus or obd2_plugin.
-///
-/// When implemented, replaces GPS speed estimation with PID 010D vehicle speed,
-/// and provides RPM, fuel level, and fault codes to SafePulseEngine.
+/// FUTURE SCOPE: OBD-II Vehicle Hardware Integration
+/// Planned: BLE connection to ELM327 adapters for direct speed/RPM telemetry.
+/// Extension point: implement connect(), getSpeed(), getFuelLevel().
+/// Current state: abstract stub — no BLE or serial implementation.
+/// Tracked in: GitHub Issues label "future-obd"
 abstract class OBDService {
   /// TODO: Connect to paired OBD-II Bluetooth adapter.
   Future connect();

@@ -1,73 +1,42 @@
 package com.safepulse.backend.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
 import java.time.Instant;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(
-        name = "emergency_events",
-        indexes = {
-                @Index(name = "idx_emergency_event_id", columnList = "eventId", unique = true),
-                @Index(name = "idx_emergency_status", columnList = "status")
-        }
-)
+@Document(collection = "emergency_events")
 public class EmergencyEvent {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(nullable = false, unique = true)
+    @Indexed(unique = true)
     private String eventId;
 
-    @Column(nullable = false)
     private double latitude;
 
-    @Column(nullable = false)
     private double longitude;
 
-    @Column(nullable = false)
     private String severity;
 
-    @Column(nullable = false)
     private String locationStatus;
 
-    @Column(nullable = false)
     private String status;
 
-    @Column(nullable = false)
     private int priorityScore;
 
-    @Column(nullable = false)
     private boolean dispatchRecommended;
 
-    @Column(nullable = false)
+    @CreatedDate
     private Instant createdAt;
 
-    @Column(nullable = false)
+    @LastModifiedDate
     private Instant updatedAt;
 
-    @PrePersist
-    void onCreate() {
-        Instant now = Instant.now();
-        createdAt = now;
-        updatedAt = now;
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        updatedAt = Instant.now();
-    }
-
-    public Long getId() {
+    public String getId() {
         return id;
     }
 

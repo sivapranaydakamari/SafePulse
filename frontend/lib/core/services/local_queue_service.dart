@@ -1,11 +1,9 @@
-/// LocalQueueService — Future Scope
-///
-/// Planned: Full offline SOS event queueing with local persistence and retry sync.
-/// TODO: Implement using sqflite or hive for local storage, with connectivity_plus
-/// for network state monitoring and automatic retry on reconnect.
-///
-/// This converts the current fire-and-forget offline SMS (triggerOfflineSOS) into
-/// a reliable queued delivery system that retries until the server acknowledges.
+/// FUTURE SCOPE: Offline Emergency Queueing
+/// Planned: persist SOS events locally (Hive/SQLite) and retry on reconnect.
+/// Extension point: implement enqueue(), flush(), retryAll().
+/// Current state: stub — no local persistence implemented.
+/// Builds on: frontend/packages/telephony_fix offline SMS foundation.
+/// Tracked in: GitHub Issues label "future-offline-queue"
 abstract class LocalQueueService {
   /// TODO: Enqueue an SOS event for delivery when network is restored.
   Future<void> enqueueSOSEvent(Map<String, dynamic> sosPayload);

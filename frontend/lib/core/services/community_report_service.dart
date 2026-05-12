@@ -1,8 +1,8 @@
-/// CommunityReportService — Future Scope
-///
-/// Planned: Community-based safety reporting and live risk zone updates.
-/// TODO: Integrate with backend/services/risk_incident_repository.js to allow
-/// users to submit and view crowd-sourced hazard reports on the route map.
+/// FUTURE SCOPE: Community Safety Reporting
+/// Planned: crowd-sourced hazard pins (potholes, flooding, accidents).
+/// Extension point: implement submitReport(), fetchNearbyReports().
+/// Current state: abstract stub — no network implementation.
+/// Tracked in: GitHub Issues label "future-community"
 abstract class CommunityReportService {
   /// TODO: Submit a hazard report at the given location.
   Future<bool> submitReport({

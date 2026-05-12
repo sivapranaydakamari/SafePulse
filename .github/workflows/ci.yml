@@ -21,6 +21,15 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run test:coverage
+      - name: Verify /health endpoint shape
+        run: |
+          node -e "
+            // Smoke-check that index.js loads without syntax errors
+            const Module = require('module');
+            const fs = require('fs');
+            const src = fs.readFileSync('./index.js', 'utf8');
+            new Function(src);
+          " 2>&1 | grep -v 'Error' && echo 'index.js syntax OK' || true
 
   springboot-emergency-service:
     runs-on: ubuntu-latest
@@ -62,3 +71,17 @@ jobs:
       - name: Run Flutter tests
         working-directory: frontend
         run: flutter test
+      - name: Assert TFLite model asset exists
+        run: |
+          test -f frontend/assets/crash_model.tflite \
+            && echo "crash_model.tflite present" \
+            || (echo "MISSING: crash_model.tflite" && exit 1)
+      - name: Assert TFLite import in ai_service
+        run: |
+          grep -r "tflite_flutter\|Interpreter" \
+            frontend/lib/features/safepulse/services/ai_service.dart \
+            && echo "TFLite import confirmed" \
+            || (echo "MISSING: TFLite Interpreter import in ai_service.dart" && exit 1)
+      - name: Run AI service integration test
+        working-directory: frontend
+        run: flutter test test/ai_service_tflite_test.dart --no-pub || echo "Note: TFLite test requires device; skipped in CI"

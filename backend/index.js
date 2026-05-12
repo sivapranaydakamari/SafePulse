@@ -74,13 +74,13 @@ app.use('/api/ai',       require('./routes/ai'));
 
 app.get('/', (req, res) => res.send('SafePulse API v2 running'));
 app.get('/health', (req, res) => {
-  const dbReady = mongoose.connection.readyState === 1;
-  if (!dbReady) {
-    return res.status(503).json({ status: 'degraded', db: 'disconnected' });
+  const mongoStatus = mongoose.connection.readyState === 1 ? 'ok' : 'disconnected';
+  if (mongoStatus !== 'ok') {
+    return res.status(503).json({ status: 'degraded', mongo: mongoStatus });
   }
   res.json({
     status: 'ok',
-    db: 'connected',
+    mongo: mongoStatus,
     service: 'safepulse-api-gateway',
     realtime: realtimeHub.isEnabled,
     fcm: isFcmReady() ? 'ok' : 'not_configured',
